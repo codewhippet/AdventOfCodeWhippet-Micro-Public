@@ -1,0 +1,2 @@
+target_compile_definitions(pico_settings INTERFACE PICO_MALLOC_PANIC=0)
+target_compile_options(pico_settings INTERFACE -Wno-multichar)

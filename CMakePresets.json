@@ -1,0 +1,98 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "installDir": "${sourceDir}/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "x64-debug",
+      "displayName": "Win32 x64 (Debug)",
+      "inherits": "windows-base",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-release",
+      "displayName": "Win32 x64 (Release)",
+      "inherits": "x64-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "pico-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "sdkVersion": "2.2.0",
+        "toolchainVersion": "14_2_Rel1",
+        "picotoolVersion": "2.2.0-a4",
+        "openocdVersion":  "0.12.0+dev"
+      }
+    },
+    {
+      "name": "pico",
+      "displayName": "Pico (Release)",
+      "inherits": "pico-base",
+      "cacheVariables": {
+        "PICO_BOARD": "pico",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "pico_w",
+      "displayName": "Pico W (Release)",
+      "inherits": "pico-base",
+      "cacheVariables": {
+        "PICO_BOARD": "pico_w",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "pico2",
+      "displayName": "Pico 2 (Release)",
+      "inherits": "pico-base",
+      "cacheVariables": {
+        "PICO_BOARD": "pico2",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "pico2_w",
+      "displayName": "Pico 2 W (Release)",
+      "inherits": "pico-base",
+      "cacheVariables": {
+        "PICO_BOARD": "pico2_w",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "pico2plus",
+      "displayName": "Pico Plus 2 (Release)",
+      "inherits": "pico-base",
+      "cacheVariables": {
+        "PICO_BOARD": "pimoroni_pico_plus2_rp2350",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ]
+}

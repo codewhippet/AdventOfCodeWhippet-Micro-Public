@@ -1,0 +1,37 @@
+target_compile_definitions(win32_settings INTERFACE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(win32_settings INTERFACE NOMINMAX)
+target_compile_definitions(win32_settings INTERFACE _CRT_SECURE_NO_WARNINGS)
+
+target_compile_options(win32_settings INTERFACE /W4)
+target_compile_options(win32_settings INTERFACE /WX)
+
+target_compile_options(win32_settings INTERFACE /Gm-)
+target_compile_options(win32_settings INTERFACE /EHsc)
+target_compile_options(win32_settings INTERFACE /Zc:wchar_t)
+target_compile_options(win32_settings INTERFACE /Zc:forScope)
+target_compile_options(win32_settings INTERFACE /Zc:inline)
+target_compile_options(win32_settings INTERFACE /permissive-)
+target_compile_options(win32_settings INTERFACE /Gd)
+target_compile_options(win32_settings INTERFACE /TP)
+target_compile_options(win32_settings INTERFACE /FC)
+
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:DEBUG>:/Od>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:DEBUG>:/sdl>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:DEBUG>:/RTC1>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:DEBUG>:/MDd>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:DEBUG>:/GS>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:DEBUG>:/fp:precise>)
+
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/O2>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/Oi>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/GL>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/MD>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/GS->)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/Gy>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/arch:AVX2>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/fp:fast>)
+target_compile_options(win32_settings INTERFACE $<$<CONFIG:RELEASE>:/Zi>)
+
+target_link_options(win32_settings INTERFACE $<$<CONFIG:Release>:/DEBUG>)
+
+add_library(pico_platform_headers INTERFACE)

@@ -1,0 +1,7 @@
+get_filename_component(LIB_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+file(GLOB SOURCE_FILES *.cpp)
+add_library(${LIB_NAME} ${SOURCE_FILES})
+target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${LIB_NAME} PUBLIC win32_settings)
+target_link_libraries(${LIB_NAME} PUBLIC pico_settings)
+target_link_libraries(${LIB_NAME} PUBLIC pico_platform_headers)
