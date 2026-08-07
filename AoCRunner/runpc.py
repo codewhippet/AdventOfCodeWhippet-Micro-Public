@@ -8,7 +8,7 @@ puzzleInput.parse_args()
 puzzleInput.build_input()
 
 proc = subprocess.Popen(
-    [".\\x64\\Release\\AdventOfCodeWhippet.exe", "--client"],
+    [".\\build\\x64-release\\AdventOfCodeWhippet.exe", "--client"],
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     bufsize=0
