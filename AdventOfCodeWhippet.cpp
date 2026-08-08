@@ -12,8 +12,12 @@
 #include <crtdbg.h>
 #endif
 
-#define ENABLE_TIMING 1
-#define ENABLE_MEMORY_WATERMARK 1
+#if PICO_ON_DEVICE
+#include <malloc.h>
+#endif
+
+#define ENABLE_TIMING 0
+#define ENABLE_MEMORY_WATERMARK 0
 #define ENABLE_ALLOCATION_CHECK 1
 
 enum class OperatingMode
@@ -109,7 +113,7 @@ static void ExecutePuzzle(int year, int puzzle, int part, void (*puzzleFn)())
 	MemoryWatermark::Start();
 #endif
 
-#if ENABLE_ALLOCATION_CHECK
+#if ENABLE_ALLOCATION_CHECK && PICO_ON_DEVICE
 	{
 		void* largeAlloc = malloc(200 * 1024);
 		if (largeAlloc == nullptr)
@@ -129,6 +133,15 @@ static void ExecutePuzzle(int year, int puzzle, int part, void (*puzzleFn)())
 	{
 		PuzzleOutput::Submit(year, puzzle, part, "[ERROR]");
 	}
+
+#if PICO_ON_DEVICE
+	// Newlib nano doesn't always recover the final free block in the managed arena and it
+	// uses sbrk to try to grab the *full* allocation size, resulting in a sort of
+	// 'false fragmentation'. e.g. If malloc has a ~30Kb free block at the end of the
+	// arena and the system still has ~170kb of free memory after the arena, an allocation
+	// of 200Kb will fail. malloc_trim releases the trailing free block.
+	malloc_trim(0);
+#endif
 
 #if ENABLE_TIMING && _WIN32
 	QueryPerformanceCounter(&stop);
