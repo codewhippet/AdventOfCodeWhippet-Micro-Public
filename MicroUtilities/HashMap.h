@@ -20,7 +20,7 @@ public:
 		// Only here to make std::ranges::range<HashMap<...>&> happy
 	}
 
-	HashMapConstIterator(const HashMap<KEY_TYPE, MAPPED_TYPE>* sourceMap, size_t index)
+	HashMapConstIterator(const HashMap<KEY_TYPE, MAPPED_TYPE>* sourceMap, uint32_t index)
 		: SourceMap(sourceMap)
 		, Index(index)
 	{
@@ -76,7 +76,7 @@ private:
 	}
 
 	const HashMap<KEY_TYPE, MAPPED_TYPE>* SourceMap = nullptr;
-	size_t Index = 0;
+	uint32_t Index = 0;
 };
 
 template <typename KEY_TYPE, typename MAPPED_TYPE>
@@ -86,9 +86,9 @@ public:
 	using key_type = KEY_TYPE;
 	using mapped_type = MAPPED_TYPE;
 	using value_type = std::pair<KEY_TYPE, MAPPED_TYPE>;
-	using size_type = size_t;
+	using size_type = uint32_t;
 
-	HashMap(size_t size, const key_type& invalidKeyValue)
+	HashMap(uint32_t size, const key_type& invalidKeyValue)
 		: Table(size, { invalidKeyValue, {} })
 		, TableSizeMask(size - 1)
 		, MapSize(0)
@@ -106,11 +106,11 @@ public:
 
 	bool Insert(const key_type& key, const mapped_type& value)
 	{
-		size_t hashBegin = std::hash<key_type>{}(key);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex].first == key)
 			{
 				return false;
@@ -134,11 +134,11 @@ public:
 
 	bool Set(const key_type& key, const mapped_type& value)
 	{
-		size_t hashBegin = std::hash<key_type>{}(key);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex].first == key)
 			{
 				Table[tableIndex].second = value;
@@ -163,11 +163,11 @@ public:
 
 	bool Contains(const key_type& key) const
 	{
-		size_t hashBegin = std::hash<key_type>{}(key);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex].first == key)
 			{
 				return true;
@@ -184,11 +184,11 @@ public:
 
 	mapped_type FindOrDefault(const key_type& key, const mapped_type& def)
 	{
-		size_t hashBegin = std::hash<key_type>{}(key);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex].first == key)
 			{
 				return Table[tableIndex].second;
@@ -205,11 +205,11 @@ public:
 
 	bool TryFind(const key_type& key, mapped_type* out)
 	{
-		size_t hashBegin = std::hash<key_type>{}(key);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex].first == key)
 			{
 				*out = Table[tableIndex].second;
@@ -227,11 +227,11 @@ public:
 
 	mapped_type& At(const key_type& key)
 	{
-		size_t hashBegin = std::hash<key_type>{}(key);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex].first == key)
 			{
 				return Table[tableIndex].second;
@@ -243,7 +243,7 @@ public:
 		return *reinterpret_cast<mapped_type*>(0);
 	}
 
-	size_t Size() const
+	size_type Size() const
 	{
 		return MapSize;
 	}
@@ -262,8 +262,8 @@ private:
 	friend HashMapConstIterator<KEY_TYPE, MAPPED_TYPE>;
 
 	std::vector<value_type> Table;
-	size_t TableSizeMask;
-	size_t MapSize;
+	uint32_t TableSizeMask;
+	uint32_t MapSize;
 	key_type InvalidKeyValue;
 
 #if _DEBUG && WIN32

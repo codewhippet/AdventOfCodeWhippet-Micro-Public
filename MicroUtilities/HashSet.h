@@ -19,7 +19,7 @@ public:
 		// Only here to make std::ranges::range<HashSet<...>&> happy
 	}
 
-	HashSetConstIterator(const HashSet<KEY_TYPE>* sourceSet, size_t index)
+	HashSetConstIterator(const HashSet<KEY_TYPE>* sourceSet, uint32_t index)
 		: SourceSet(sourceSet)
 		, Index(index)
 	{
@@ -75,7 +75,7 @@ private:
 	}
 
 	const HashSet<KEY_TYPE>* SourceSet = nullptr;
-	size_t Index = 0;
+	uint32_t Index = 0;
 };
 
 template <typename KEY_TYPE>
@@ -84,9 +84,9 @@ class HashSet
 public:
 	using key_type = KEY_TYPE;
 	using value_type = KEY_TYPE;
-	using size_type = size_t;
+	using size_type = uint32_t;
 
-	HashSet(size_t size, const key_type& invalidValue)
+	HashSet(uint32_t size, const key_type& invalidValue)
 		: Table(size, invalidValue)
 		, TableSizeMask(size - 1)
 		, SetSize(0)
@@ -100,11 +100,11 @@ public:
 
 	bool Insert(const key_type& value)
 	{
-		size_t hashBegin = std::hash<key_type>{}(value);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(value));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex] == value)
 			{
 				return false;
@@ -128,11 +128,11 @@ public:
 
 	bool Contains(const key_type& value) const
 	{
-		size_t hashBegin = std::hash<key_type>{}(value);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(value));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex] == value)
 			{
 				return true;
@@ -149,11 +149,11 @@ public:
 
 	bool Erase(const key_type& value)
 	{
-		size_t hashBegin = std::hash<key_type>{}(value);
-		size_t hashEnd = hashBegin + Table.size();
-		for (size_t i = hashBegin; i < hashEnd; i++)
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(value));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
 		{
-			const size_t tableIndex = i & TableSizeMask;
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
 			if (Table[tableIndex] == InvalidValue)
 			{
 				return false;
@@ -165,7 +165,7 @@ public:
 				SetSize--;
 
 				// Rehash all of the following entries
-				for (size_t followingEntry = i + 1; Table[followingEntry & TableSizeMask] != InvalidValue; followingEntry++)
+				for (uint32_t followingEntry = hashIndex + 1; Table[followingEntry & TableSizeMask] != InvalidValue; followingEntry++)
 				{
 					key_type temp = Table[followingEntry & TableSizeMask];
 					Table[followingEntry & TableSizeMask] = InvalidValue;
@@ -181,7 +181,7 @@ public:
 		return false;
 	}
 
-	size_t Size() const
+	size_type Size() const
 	{
 		return SetSize;
 	}
@@ -199,8 +199,8 @@ public:
 private:
 	friend HashSetConstIterator<KEY_TYPE>;
 	std::vector<KEY_TYPE> Table;
-	size_t TableSizeMask;
-	size_t SetSize;
+	uint32_t TableSizeMask;
+	uint32_t SetSize;
 	KEY_TYPE InvalidValue;
 
 #if _DEBUG && WIN32
