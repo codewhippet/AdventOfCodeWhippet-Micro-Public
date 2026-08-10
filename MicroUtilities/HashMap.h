@@ -4,6 +4,7 @@
 #include <bit>
 #include <stdint.h>
 #include <assert.h>
+#include <stdint.h>
 
 template <typename KEY_TYPE, typename MAPPED_TYPE>
 class HashMap;

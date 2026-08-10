@@ -3,6 +3,7 @@
 #include <utility>
 #include <bit>
 #include <assert.h>
+#include <stdint.h>
 
 template <typename KEY_TYPE>
 class HashSet;
