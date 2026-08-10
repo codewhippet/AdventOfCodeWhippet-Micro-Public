@@ -4,27 +4,34 @@ using namespace std;
 
 namespace Puzzle20_2018_Types
 {
+	struct CurrentState
+	{
+		// Nothing goes further than [-128, 127] so we just let the co-ordinates wrap for  64Kib perfect hash
+		uint16_t Distance;
+		uint8_t X;
+		uint8_t Y;
+	};
 }
 
 using namespace Puzzle20_2018_Types;
 
 void Puzzle20_A_2018()
 {
-	vector<pair<Vec2Byte, uint16_t>> stack;
+	vector<CurrentState> stack;
 	stack.reserve(512);
 
-	HashMap<Vec2Byte, uint16_t> roomDistances(32 * 1024, { numeric_limits<int8_t>::min(), numeric_limits<int8_t>::min() });
-	auto visitRoom = [&](const pair<Vec2Byte, uint16_t>& room)
+	vector<uint16_t> roomDistances(64 * 1024, numeric_limits<uint16_t>::max());
+	auto visitRoom = [&](const CurrentState& room)
 		{
-			uint16_t existingDistance;
-			bool existingDistanceIsShortest = roomDistances.TryFind(room.first, &existingDistance) && (existingDistance <= room.second);
-			if (!existingDistanceIsShortest)
+			size_t distanceIndex = (room.X << 8) | room.Y;
+			uint16_t existingDistance = roomDistances[distanceIndex];
+			if (room.Distance < existingDistance)
 			{
-				roomDistances.Set(room.first, room.second);
+				roomDistances[distanceIndex] = room.Distance;
 			}
 		};
 
-	pair<Vec2Byte, uint16_t> current = {};
+	CurrentState current = {};
 	visitRoom(current);
 
 	for (int c = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
@@ -40,26 +47,26 @@ void Puzzle20_A_2018()
 			break;
 
 		case 'E':
-			current.first += Vec2Byte::East();
-			current.second++;
+			current.X++;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
 		case 'N':
-			current.first += Vec2Byte::North();
-			current.second++;
+			current.Y--;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
 		case 'S':
-			current.first += Vec2Byte::South();
-			current.second++;
+			current.Y++;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
 		case 'W':
-			current.first += Vec2Byte::West();
-			current.second++;
+			current.X--;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
@@ -72,7 +79,10 @@ void Puzzle20_A_2018()
 	MaxValue<uint16_t> maxShortesDistance;
 	for (const auto& roomDist : roomDistances)
 	{
-		maxShortesDistance.Update(roomDist.second);
+		if (roomDist != numeric_limits<uint16_t>::max())
+		{
+			maxShortesDistance.Update(roomDist);
+		}
 	}
 
 	int32_t answer = maxShortesDistance.Get();
@@ -81,21 +91,21 @@ void Puzzle20_A_2018()
 
 void Puzzle20_B_2018()
 {
-	vector<pair<Vec2Byte, uint16_t>> stack;
+	vector<CurrentState> stack;
 	stack.reserve(512);
 
-	HashMap<Vec2Byte, uint16_t> roomDistances(32 * 1024, { numeric_limits<int8_t>::min(), numeric_limits<int8_t>::min() });
-	auto visitRoom = [&](const pair<Vec2Byte, uint16_t>& room)
+	vector<uint16_t> roomDistances(64 * 1024, numeric_limits<uint16_t>::max());
+	auto visitRoom = [&](const CurrentState& room)
 		{
-			uint16_t existingDistance;
-			bool existingDistanceIsShortest = roomDistances.TryFind(room.first, &existingDistance) && (existingDistance <= room.second);
-			if (!existingDistanceIsShortest)
+			size_t distanceIndex = (room.X << 8) | room.Y;
+			uint16_t existingDistance = roomDistances[distanceIndex];
+			if (room.Distance < existingDistance)
 			{
-				roomDistances.Set(room.first, room.second);
+				roomDistances[distanceIndex] = room.Distance;
 			}
 		};
 
-	pair<Vec2Byte, uint16_t> current = {};
+	CurrentState current = {};
 	visitRoom(current);
 
 	for (int c = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
@@ -111,26 +121,26 @@ void Puzzle20_B_2018()
 			break;
 
 		case 'E':
-			current.first += Vec2Byte::East();
-			current.second++;
+			current.X++;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
 		case 'N':
-			current.first += Vec2Byte::North();
-			current.second++;
+			current.Y--;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
 		case 'S':
-			current.first += Vec2Byte::South();
-			current.second++;
+			current.Y++;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
 		case 'W':
-			current.first += Vec2Byte::West();
-			current.second++;
+			current.X--;
+			current.Distance++;
 			visitRoom(current);
 			break;
 
@@ -140,6 +150,10 @@ void Puzzle20_B_2018()
 		}
 	}
 
-	int32_t answer = static_cast<int32_t>(ranges::count_if(roomDistances, [](const auto& roomDist) { return roomDist.second >= 1000; }));
+	int32_t answer = static_cast<int32_t>(ranges::count_if(roomDistances,
+		[](const auto& roomDist)
+		{
+			return (roomDist != numeric_limits<uint16_t>::max()) && (roomDist >= 1000);
+		}));
 	PuzzleOutput::Submit(2018, 20, 2, answer);
 }
