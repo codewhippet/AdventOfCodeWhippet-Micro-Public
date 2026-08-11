@@ -113,11 +113,13 @@ struct std::hash<Vec2<COORDINATE_TYPE>>
 {
 	std::size_t operator()(const Vec2<COORDINATE_TYPE>& v) const noexcept
 	{
-		const int shiftDown = (sizeof(std::size_t) * CHAR_BIT >> 2);
-		const int shiftUp = (sizeof(std::size_t) * CHAR_BIT) - shiftDown;
+		uint32_t hash = 0x811c9dc5;
 
-		size_t hash = std::hash<decltype(v.X)>{}(v.X);
-		hash = std::hash<decltype(v.Y)>{}(v.Y) ^ (hash >> shiftDown | hash << shiftUp);
+		hash ^= v.X;
+		hash *= 0x01000193;
+		hash ^= v.Y;
+		hash *= 0x01000193;
+
 		return hash;
 	}
 };
