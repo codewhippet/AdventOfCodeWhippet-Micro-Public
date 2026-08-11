@@ -206,11 +206,15 @@ void Puzzle19_B_2018()
 	int32_t target = comp.Registers[5];
 
 	int32_t answer = 0;
-	for (int32_t i = 1; i <= target; i++)
+	for (int32_t i = 1; (i * i) <= target; i++)
 	{
-		if ((target % i) == 0)
+		int32_t rem;
+		int32_t div = Hardware::DivModRem(target, i, &rem);
+
+		if (rem == 0)
 		{
 			answer += i;
+			answer += div;
 		}
 	}
 
