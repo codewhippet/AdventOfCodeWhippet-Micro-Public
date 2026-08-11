@@ -27,10 +27,11 @@ struct std::hash<Identifier>
 {
 	size_t operator()(const Identifier& m) const noexcept
 	{
-		size_t hash = 0;
+		uint32_t hash = 0x811c9dc5;
 		for (size_t i = 0; i < 8; i++)
 		{
-			hash = (hash << 16) ^ (hash >> 16) ^ std::hash<uint8_t>{}(m.Data[i]);
+			hash ^= m.Data[i];
+			hash *= 0x01000193;
 		}
 		return hash;
 	}
