@@ -123,58 +123,36 @@ static void Execute(const vector<Instruction>& program, Computer* computer, int3
 		const Instruction& currentInst = program[computer->PC()];
 		switch (currentInst.Op)
 		{
-		case Opcode::addr:
+		[[likely]] case Opcode::addr:
 			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] + computer->Registers[currentInst.Args[B]];
 			break;
-		case Opcode::addi:
+		[[likely]] case Opcode::addi:
 			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] + currentInst.Args[B];
 			break;
 		case Opcode::mulr:
 			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] * computer->Registers[currentInst.Args[B]];
 			break;
-		case Opcode::muli:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] * currentInst.Args[B];
-			break;
-		case Opcode::banr:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] & computer->Registers[currentInst.Args[B]];
-			break;
-		case Opcode::bani:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] & currentInst.Args[B];
-			break;
-		case Opcode::borr:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] | computer->Registers[currentInst.Args[B]];
-			break;
-		case Opcode::bori:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] | currentInst.Args[B];
-			break;
-		case Opcode::setr:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]];
+		case Opcode::eqrr:
+			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] == computer->Registers[currentInst.Args[B]];
 			break;
 		case Opcode::seti:
 			computer->Registers[currentInst.Args[C]] = currentInst.Args[A];
 			break;
-		case Opcode::gtir:
-			computer->Registers[currentInst.Args[C]] = currentInst.Args[A] > computer->Registers[currentInst.Args[B]];
-			break;
-		case Opcode::gtri:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] > currentInst.Args[B];
+		case Opcode::setr:
+			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]];
 			break;
 		case Opcode::gtrr:
 			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] > computer->Registers[currentInst.Args[B]];
 			break;
-		case Opcode::eqir:
-			computer->Registers[currentInst.Args[C]] = currentInst.Args[A] == computer->Registers[currentInst.Args[B]];
+		[[unlikely]] case Opcode::muli:
+			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] * currentInst.Args[B];
 			break;
-		case Opcode::eqri:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] == currentInst.Args[B];
-			break;
-		case Opcode::eqrr:
-			computer->Registers[currentInst.Args[C]] = computer->Registers[currentInst.Args[A]] == computer->Registers[currentInst.Args[B]];
-			break;
+		[[unlikely]] default:
+			assert(false);
 		}
 
 		int32_t nextPc = computer->PC() + 1;
-		if ((nextPc < 0) || (nextPc >= (int32_t)program.size()))
+		if (nextPc >= (int32_t)program.size())
 		{
 			break;
 		}
