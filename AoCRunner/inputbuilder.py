@@ -19,6 +19,7 @@ class InputBuilder:
         parser.add_argument("-y", "--years", type=str, default="")
         parser.add_argument("-p", "--puzzles", type=str, default="")
         parser.add_argument("-c", "--com", type=str, default="")
+        parser.add_argument("-t", "--timing", type=str, default="")
         self.args = parser.parse_args()
         
     def build_input(self):

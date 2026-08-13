@@ -2,10 +2,15 @@ import subprocess
 import io
 import time
 from inputbuilder import *
+from timings import *
 
 puzzleInput = InputBuilder(".\\")
 puzzleInput.parse_args()
 puzzleInput.build_input()
+
+timings = None
+if puzzleInput.args.timing:
+    timings = Timings()
 
 proc = subprocess.Popen(
     [".\\build\\x64-release\\AdventOfCodeWhippet.exe", "--client"],
@@ -39,7 +44,12 @@ for puzzle in puzzleInput.puzzles:
         input_contents = file.read()
         line = ExecutePuzzle(puzzle, input_contents)[0]
         best_time = min([ExecutePuzzle(puzzle, input_contents)[1] for _ in range(5)])
-        print("[" + f"{best_time:0.3f}".rjust(7) + "]"+ line.decode("ascii"), end="")
+        print("[" + f"{best_time:0.3f}".rjust(10) + "]"+ line.decode("ascii"), end="")
+        if timings is not None:
+            timings.Update(puzzle, "PC", best_time)
+
+if timings is not None:
+    timings.Save()
 
 proc.kill()
 print("Done")
