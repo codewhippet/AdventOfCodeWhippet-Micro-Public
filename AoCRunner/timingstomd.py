@@ -10,6 +10,7 @@ HEADERS = [
     "RP2040 (ms)",
     "RP2350 (ms)",
     "RP2350 @ 300MHz (ms)",
+    "Notes",
 ]
 
 GREEN = "\U0001F7E2"  # green circle
@@ -62,6 +63,10 @@ def render_row(year, day, part, t):
     else:
         ratio_txt = "-"
 
+    notes = t.get("note")
+    if notes is None:
+        notes = ""
+
     cells = [
         year,
         day,
@@ -71,6 +76,7 @@ def render_row(year, day, part, t):
         rp2040_txt,
         fmt_pico_time(t.get("RP2350")),
         fmt_pico_time(t.get("RP2350_300MHz")),
+        notes,
     ]
     return "| " + " | ".join(cells) + " |"
 
