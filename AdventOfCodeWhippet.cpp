@@ -153,6 +153,13 @@ static void ExecutePuzzle(int year, int puzzle, int part, void (*puzzleFn)())
 #endif
 }
 
+// For IO timing
+static void Reflect(int year, int puzzle, int part)
+{
+	PuzzleInput::DiscardRemaining();
+	PuzzleOutput::Submit(year, puzzle + 1, part, static_cast<int32_t>(0));
+}
+
 int main(int argc, const char* argv[])
 {
 	Hardware::Initialise();
@@ -266,7 +273,15 @@ int main(int argc, const char* argv[])
 				int year, puzzle, part, size;
 				PuzzleInput::FromStdIn(&year, &puzzle, &part, &size);			
 				if (year == -1)
+				{
 					continue;
+				}
+
+				if (part == 2)
+				{
+					Reflect(year, puzzle, part);
+					continue;
+				}
 
 				void (*puzzleFn)() = nullptr;
 				for (size_t i = 0; i < sizeof(PuzzleTables) / sizeof(PuzzleTables[0]); i++)

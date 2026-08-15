@@ -20,6 +20,7 @@ class InputBuilder:
         parser.add_argument("-p", "--puzzles", type=str, default="")
         parser.add_argument("-c", "--com", type=str, default="")
         parser.add_argument("-t", "--timing", type=str, default="")
+        parser.add_argument("-i", "--io", action="store_true")
         self.args = parser.parse_args()
         
     def build_input(self):
@@ -30,6 +31,10 @@ class InputBuilder:
             if len(selected_years) == 0 or year in selected_years:
                 for puzzle in puzzles["puzzles"].split(";"):
                     if len(selected_puzzles) == 0 or puzzle in selected_puzzles:
-                        self.puzzles.append(PuzzleInput(year, puzzle, "1", self.directory + f"AoCInput\\{year}\\Puzzle{puzzle.rjust(2,'0')}.txt"))
-                        if puzzle != puzzles["last_day"]:
-                            self.puzzles.append(PuzzleInput(year, puzzle, "2", self.directory + f"AoCInput\\{year}\\Puzzle{puzzle.rjust(2,'0')}.txt"))
+                        filename = self.directory + f"AoCInput\\{year}\\Puzzle{puzzle.rjust(2,'0')}.txt"
+                        if self.args.io:
+                            self.puzzles.append(PuzzleInput(year, puzzle, "3", filename))
+                        else:
+                            self.puzzles.append(PuzzleInput(year, puzzle, "1", filename))
+                            if puzzle != puzzles["last_day"]:
+                                self.puzzles.append(PuzzleInput(year, puzzle, "2", filename))

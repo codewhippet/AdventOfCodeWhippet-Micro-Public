@@ -10,6 +10,7 @@ HEADERS = [
     "RP2040 (ms)",
     "RP2350 (ms)",
     "RP2350 @ 300MHz (ms)",
+    "IO (ms)",
     "Notes",
 ]
 
@@ -31,6 +32,13 @@ def time_marker_pico(value):
         return AMBER
     return RED
 
+def time_marker_io(value):
+    if value < 200:
+        return GREEN
+    if value < 400:
+        return AMBER
+    return RED
+
 def fmt_pc_time(value):
     if value is None:
         return "-"
@@ -40,6 +48,11 @@ def fmt_pico_time(value):
     if value is None:
         return "-"
     return f"{time_marker_pico(value)} {value:,.1f}"
+
+def fmt_io_time(value):
+    if value is None:
+        return "-"
+    return f"{time_marker_io(value)} {value:,.1f}"
 
 def ratio_marker(ratio, rp2040):
     if rp2040 < 100:
@@ -76,6 +89,7 @@ def render_row(year, day, part, t):
         rp2040_txt,
         fmt_pico_time(t.get("RP2350")),
         fmt_pico_time(t.get("RP2350_300MHz")),
+        fmt_io_time(t.get("IO")),
         notes,
     ]
     return "| " + " | ".join(cells) + " |"
