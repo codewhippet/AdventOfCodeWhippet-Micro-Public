@@ -2,6 +2,7 @@
 #include "AoC2016/AoC2016.h"
 #include "AoC2017/AoC2017.h"
 #include "AoC2018/AoC2018.h"
+#include "AoC2019/AoC2019.h"
 #include <MicroUtils.h>
 #include <string>
 #include <vector>
@@ -41,6 +42,7 @@ static const Puzzles PuzzleTables[] =
 	{ 2016, &PuzzleTableCount_2016, PuzzleTable_2016 },
 	{ 2017, &PuzzleTableCount_2017, PuzzleTable_2017 },
 	{ 2018, &PuzzleTableCount_2018, PuzzleTable_2018 },
+	{ 2019, &PuzzleTableCount_2019, PuzzleTable_2019 },
 };
 
 #if ENABLE_MEMORY_WATERMARK && _WIN32

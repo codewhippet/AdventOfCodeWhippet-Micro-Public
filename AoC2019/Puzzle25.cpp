@@ -326,3 +326,8 @@ void Puzzle25_A_2019()
 {
 	Puzzle25_A(R"(z:\AoCInput\2019\Puzzle25.txt)");
 }
+
+void Puzzle25_B_2019()
+{
+	return PuzzleOutput::Submit(2018, 25, 2, int32_t(-1));
+}

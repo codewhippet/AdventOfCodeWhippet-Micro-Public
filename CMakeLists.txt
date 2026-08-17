@@ -58,6 +58,7 @@ add_subdirectory(AoC2015)
 add_subdirectory(AoC2016)
 add_subdirectory(AoC2017)
 add_subdirectory(AoC2018)
+add_subdirectory(AoC2019)
 
 target_link_libraries(AdventOfCodeWhippet PRIVATE MicroUtilities)
 target_link_libraries(AdventOfCodeWhippet PRIVATE Utilities)
@@ -65,6 +66,7 @@ target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2015)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2016)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2017)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2018)
+target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2019)
 
 #
 # More Pico SDK
