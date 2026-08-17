@@ -2,74 +2,52 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle01_2019_Types
 {
 }
 
 using namespace Puzzle01_2019_Types;
 
-static int64_t FuelRequired(int64_t mass)
+static int32_t FuelRequired(int32_t mass)
 {
 	return (mass / 3) - 2;
 }
 
-static int64_t FuelRequiredNonZero(int64_t mass)
+static int32_t FuelRequiredNonZero(int32_t mass)
 {
-	return max(FuelRequired(mass), 0ll);
+	return max(FuelRequired(mass), 0);
 }
 
-static int64_t FuelForMassAndFuel(int64_t mass)
+static int32_t FuelForMassAndFuel(int32_t mass)
 {
-	int64_t totalFuelNeeded = 0;
+	int32_t totalFuelNeeded = 0;
 	while (mass > 0)
 	{
-		int64_t additionalFuel = FuelRequiredNonZero(mass);
+		int32_t additionalFuel = FuelRequiredNonZero(mass);
 		totalFuelNeeded += additionalFuel;
 		mass = additionalFuel;
 	}
 	return totalFuelNeeded;
 }
 
-static void Puzzle01_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	auto fuel = ScanfEachLine<int64_t>(input, "%lld")
-		| views::elements<0>
-		| views::transform(FuelRequired)
-		| views::common;
-	int64_t answer = accumulate(fuel.begin(), fuel.end(), 0ll);
-
-	printf("[2019] Puzzle01_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle01_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	auto fuel = ScanfEachLine<int64_t>(input, "%lld")
-		| views::elements<0>
-		| views::transform(FuelForMassAndFuel)
-		| views::common;
-	int64_t answer = accumulate(fuel.begin(), fuel.end(), 0ll);
-
-	printf("[2019] Puzzle01_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle01_A_2019()
 {
-	Puzzle01_A(R"(z:\AoCInput\2019\Puzzle01.txt)");
+	int32_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		answer += FuelRequired(Parse::GetInt32());
+	}
+
+	PuzzleOutput::Submit(2019, 1, 1, answer);
 }
 
 void Puzzle01_B_2019()
 {
-	Puzzle01_B(R"(z:\AoCInput\2019\Puzzle01.txt)");
+	int32_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		answer += FuelForMassAndFuel(Parse::GetInt32());
+	}
+
+	PuzzleOutput::Submit(2019, 1, 2, answer);
 }
