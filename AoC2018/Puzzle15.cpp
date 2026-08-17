@@ -28,13 +28,13 @@ namespace Puzzle15_2018_Types
 
 	using UnitMap = map<Vec2Int, shared_ptr<Unit>, ReadingOrder>;
 
-	class VisitedBuffer;
+	class QueuedBuffer;
 
 	struct CombatArena
 	{
 		uArrayMap2D Terrain;
 		UnitMap Units;
-		shared_ptr<VisitedBuffer> Visited;
+		shared_ptr<QueuedBuffer> Queued;
 	};
 
 	struct Turn
@@ -48,31 +48,31 @@ namespace Puzzle15_2018_Types
 		Vec2Int ChosenStep;
 	};
 
-	class VisitedBuffer
+	class QueuedBuffer
 	{
 	public:
-		VisitedBuffer(const uArrayMap2D& area)
+		QueuedBuffer(const uArrayMap2D& area)
 			: Stride(area.GetWidth())
-			, Visited(area.GetWidth() * area.GetHeight(), 0)
+			, Queued(area.GetWidth() * area.GetHeight(), 0)
 		{
 		}
 
-		bool HasVisited(const Vec2Int& p)
+		bool HasQueued(const Vec2Int& p)
 		{
 			size_t index = p.Y * Stride + p.X;
-			bool hasVisited = Visited[index];
-			Visited[index] = 1;
-			return hasVisited;
+			bool hasQueued = Queued[index];
+			Queued[index] = 1;
+			return hasQueued;
 		}
 
 		void Clear()
 		{
-			memset(Visited.data(), 0, Visited.size());
+			memset(Queued.data(), 0, Queued.size());
 		}
 
 	private:
 		size_t Stride;
-		vector<uint8_t> Visited;
+		vector<uint8_t> Queued;
 	};
 }
 
@@ -100,7 +100,7 @@ static CombatArena ParseArena()
 {
 	CombatArena arena{ ReaduArrayMap() };
 	PopulateUnits(&arena);
-	arena.Visited = make_shared<VisitedBuffer>(arena.Terrain);
+	arena.Queued = make_shared<QueuedBuffer>(arena.Terrain);
 	return arena;
 }
 
@@ -108,7 +108,7 @@ static CombatArena CloneArena(const CombatArena& original)
 {
 	CombatArena cloned{ original.Terrain };
 	PopulateUnits(&cloned);
-	cloned.Visited = original.Visited;
+	cloned.Queued = original.Queued;
 	return cloned;
 }
 
@@ -121,8 +121,10 @@ static bool Pathfind(const CombatArena& arena, const Vec2Int& startingPoint, con
 	searchQueues[0].push_back(startingPoint);
 
 	set<Vec2Int, ReadingOrder> nearestEndpoints;
-	arena.Visited->Clear();
+	arena.Queued->Clear();
+	arena.Queued->HasQueued(startingPoint);
 
+	QueuedBuffer* queued = arena.Queued.get(); // Don't continually re-resolve the shared_ptr
 	for (int32_t currentSteps = 0; nearestEndpoints.empty(); currentSteps++)
 	{
 		vector<Vec2Int>& currentQueue = searchQueues[currentSteps & 0x1];
@@ -134,9 +136,6 @@ static bool Pathfind(const CombatArena& arena, const Vec2Int& startingPoint, con
 
 		for (const Vec2Int& currentPos : currentQueue)
 		{
-			if (arena.Visited->HasVisited(currentPos))
-				continue;
-
 			if (endpoints.contains(currentPos))
 			{
 				nearestEndpoints.insert(currentPos);
@@ -146,7 +145,7 @@ static bool Pathfind(const CombatArena& arena, const Vec2Int& startingPoint, con
 			for (const Vec2Int& dir : Vec2Int::CardinalDirections())
 			{
 				Vec2Int nextPos = currentPos + dir;
-				if (arena.Terrain(nextPos) == '.')
+				if ((queued->HasQueued(nextPos) == false) && (arena.Terrain(nextPos) == '.'))
 				{
 					nextQueue.push_back(nextPos);
 				}
