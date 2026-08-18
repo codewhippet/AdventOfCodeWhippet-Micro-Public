@@ -168,9 +168,15 @@ static void Puzzle15_B(const string& filename)
 void Puzzle15_A_2019()
 {
 	Puzzle15_A(R"(z:\AoCInput\2019\Puzzle15.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 15, 1, answer);
 }
 
 void Puzzle15_B_2019()
 {
 	Puzzle15_B(R"(z:\AoCInput\2019\Puzzle15.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 15, 2, answer);
 }

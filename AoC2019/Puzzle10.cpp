@@ -112,9 +112,15 @@ static void Puzzle10_B(const string& filename)
 void Puzzle10_A_2019()
 {
 	Puzzle10_A(R"(z:\AoCInput\2019\Puzzle10.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 10, 1, answer);
 }
 
 void Puzzle10_B_2019()
 {
 	Puzzle10_B(R"(z:\AoCInput\2019\Puzzle10.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 10, 2, answer);
 }

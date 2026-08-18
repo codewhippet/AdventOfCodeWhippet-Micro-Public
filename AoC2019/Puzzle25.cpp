@@ -325,6 +325,9 @@ static void Puzzle25_A(const string &filename)
 void Puzzle25_A_2019()
 {
 	Puzzle25_A(R"(z:\AoCInput\2019\Puzzle25.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 25, 1, answer);
 }
 
 void Puzzle25_B_2019()

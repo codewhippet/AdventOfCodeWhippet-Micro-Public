@@ -141,9 +141,15 @@ static void Puzzle23_B(const string& filename)
 void Puzzle23_A_2019()
 {
 	Puzzle23_A(R"(z:\AoCInput\2019\Puzzle23.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 23, 1, answer);
 }
 
 void Puzzle23_B_2019()
 {
 	Puzzle23_B(R"(z:\AoCInput\2019\Puzzle23.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2019, 23, 2, answer);
 }

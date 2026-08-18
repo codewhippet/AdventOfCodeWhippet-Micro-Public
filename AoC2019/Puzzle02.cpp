@@ -94,5 +94,5 @@ void Puzzle02_B_2019()
 
 	int32_t answer = FindGravityAssist(program);
 
-	PuzzleOutput::Submit(2019, 2, 1, answer);
+	PuzzleOutput::Submit(2019, 2, 2, answer);
 }
