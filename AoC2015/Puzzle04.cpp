@@ -8,7 +8,7 @@ namespace Puzzle04_2015_Types
 
 using namespace Puzzle04_2015_Types;
 
-void IncrementDigits(char* digits, char* end)
+static void IncrementDigits(char* digits, char* end)
 {
 	char incremented = ((*digits) += 1);
 	if (incremented <= '9')
