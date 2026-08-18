@@ -76,3 +76,86 @@ public:
 private:
 	IntputerIO Io;
 };
+
+// ----------------------------------------------------------------------------
+
+template <typename REGISTER_TYPE>
+struct uIntputerIO
+{
+	std::deque<REGISTER_TYPE> Read;
+	std::deque<REGISTER_TYPE> Write;
+};
+
+extern template struct uIntputerIO<int32_t>;
+
+template <typename REGISTER_TYPE>
+class uIntputer
+{
+public:
+
+	enum class ExecutionResult
+	{
+		Finished,
+		PendingIo,
+		Breakpoint,
+		Exception,
+	};
+
+	uIntputer() = default;
+	uIntputer(uIntputer&&) = default;
+	explicit uIntputer(size_t memorySize);
+
+	virtual ~uIntputer() = default;
+
+	void ReadProgramFromInput(size_t memorySize);
+	void CopyProgram(const std::vector<REGISTER_TYPE>& program);
+	void Reset(const std::vector<REGISTER_TYPE>& program);
+
+	ExecutionResult Execute(REGISTER_TYPE breakAfter = std::numeric_limits<REGISTER_TYPE>::max());
+
+	std::deque<REGISTER_TYPE>* GetReadQueue();
+	std::deque<REGISTER_TYPE>* GetWriteQueue();
+
+	void SetReadQueue(std::deque<REGISTER_TYPE>* readQueue);
+	void SetWriteQueue(std::deque<REGISTER_TYPE>* writeQueue);
+	void SetReadWriteQueues(std::deque<REGISTER_TYPE>* readQueue, std::deque<REGISTER_TYPE>* writeQueue);
+	void SetReadWriteQueues(uIntputerIO<REGISTER_TYPE>* io);
+
+protected:
+
+	uIntputer(const uIntputer& other);
+
+	enum class ParameterMode
+	{
+		Position,
+		Immediate,
+		Relative,
+	};
+
+	REGISTER_TYPE ReadParam(REGISTER_TYPE parameter, ParameterMode mode);
+	void WriteParam(REGISTER_TYPE parameter, ParameterMode mode, REGISTER_TYPE value);
+
+	std::vector<REGISTER_TYPE> Program;
+	REGISTER_TYPE PC = 0;
+	REGISTER_TYPE RB = 0;
+
+	std::deque<REGISTER_TYPE>* ReadQueue = nullptr;
+	std::deque<REGISTER_TYPE>* WriteQueue = nullptr;
+};
+
+extern template class uIntputer<int32_t>;
+
+template <typename REGISTER_TYPE>
+class uIntputerWithIO : public uIntputer<REGISTER_TYPE>
+{
+public:
+	uIntputerWithIO();
+	uIntputerWithIO(const uIntputerWithIO& other);
+	uIntputerWithIO(uIntputerWithIO&& other);
+	explicit uIntputerWithIO(size_t memorySize);
+
+private:
+	uIntputerIO<REGISTER_TYPE> Io;
+};
+
+extern template class uIntputerWithIO<int32_t>;
