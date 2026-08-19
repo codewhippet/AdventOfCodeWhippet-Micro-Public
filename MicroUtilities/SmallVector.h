@@ -100,7 +100,7 @@ public:
 
 	SmallVectorConstIterator<TYPE, SIZE> end() const
 	{
-		return { this, SIZE };
+		return { this, static_cast<size_t>(Size) };
 	}
 
 private:

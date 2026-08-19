@@ -244,6 +244,50 @@ public:
 		return *reinterpret_cast<mapped_type*>(0);
 	}
 
+	mapped_type& operator[](const key_type& key)
+	{
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+		{
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
+			if (Table[tableIndex].first == key)
+			{
+				return Table[tableIndex].second;
+			}
+
+			if (Table[tableIndex].first == InvalidKeyValue)
+			{
+				Table[tableIndex].first = key;
+				Table[tableIndex].second = {};
+				MapSize++;
+				return Table[tableIndex].second;
+			}
+		}
+
+		//Hardware::FlashingStop(10);
+		assert(false);
+		return *reinterpret_cast<mapped_type*>(0);
+	}
+
+	const mapped_type& operator[](const key_type& key) const
+	{
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+		{
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
+			if (Table[tableIndex].first == key)
+			{
+				return Table[tableIndex].second;
+			}
+		}
+
+		//Hardware::FlashingStop(10);
+		assert(false);
+		return *reinterpret_cast<mapped_type*>(0);
+	}
+
 	size_type Size() const
 	{
 		return MapSize;

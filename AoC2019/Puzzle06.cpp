@@ -2,111 +2,138 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle06_2019_Types
 {
 }
 
 using namespace Puzzle06_2019_Types;
 
-static void Puzzle06_A(const string &filename)
+static uint32_t IdFromInput()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	auto xOrbitsY = ReadEachLine(input, regex{ R"((\w+)\)(\w+))" })
-		| views::transform([](const auto& m) -> pair<string, string>
-			{
-				return { m[1].str(), m[2].str() }; 
-			});
-
-	multimap<string, string> edges;
-	ranges::copy(xOrbitsY, inserter(edges, edges.end()));
-
-	map<string, int64_t> visited;
-	vector<pair<string, int64_t>> searchQueue{ { "COM", 0 } };
-	for (size_t i = 0; i < searchQueue.size(); i++)
-	{
-		auto [currentPlanet, currentSteps] = searchQueue[i];
-		if (visited.insert({ currentPlanet, currentSteps }).second == false)
-			continue;
-
-		auto outerPlanets = edges.equal_range(currentPlanet);
-		ranges::copy(ranges::subrange(outerPlanets.first, outerPlanets.second)
-			| views::transform([&](const auto& kvp) -> pair<string, int64_t>
-				{
-					return { kvp.second, currentSteps + 1 };
-				}),
-			back_inserter(searchQueue));
-	}
-
-	auto allDistances = visited | views::values;
-	int64_t answer = accumulate(allDistances.begin(), allDistances.end(), 0ll);
-
-	printf("[2019] Puzzle06_A: %" PRId64 "\n", answer);
+	uint32_t id = 0;
+	id = (id << 8) | PuzzleInput::GetChar();
+	id = (id << 8) | PuzzleInput::GetChar();
+	id = (id << 8) | PuzzleInput::GetChar();
+	return id;
 }
 
-
-static void Puzzle06_B(const string& filename)
+static uint32_t IdFromString(const char* s)
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	auto xOrbitsY = ReadEachLine(input, regex{ R"((\w+)\)(\w+))" })
-		| views::transform([](const auto& m) -> pair<string, string>
-			{
-				return { m[1].str(), m[2].str() };
-			});
-
-	multimap<string, string> edges;
-	ranges::for_each(xOrbitsY, [&](const auto& kvp)
-		{
-			edges.insert({ kvp.first, kvp.second });
-			edges.insert({ kvp.second, kvp.first });
-		});
-
-	int64_t answer = 0;
-
-	map<string, int64_t> visited;
-	vector<pair<string, int64_t>> searchQueue{ { "YOU", 0 } };
-	for (size_t i = 0; i < searchQueue.size(); i++)
-	{
-		auto [currentPlanet, currentSteps] = searchQueue[i];
-		if (visited.insert({ currentPlanet, currentSteps }).second == false)
-			continue;
-
-		if (currentPlanet == "SAN")
-		{
-			answer = currentSteps - 2;
-			break;
-		}
-
-		auto outerPlanets = edges.equal_range(currentPlanet);
-		for (const auto& kvp : ranges::subrange(outerPlanets.first, outerPlanets.second))
-		{
-			searchQueue.push_back({ kvp.second, currentSteps + 1 });
-		}
-	}
-
-	printf("[2019] Puzzle06_B: %" PRId64 "\n", answer);
+	uint32_t id = 0;
+	id = (id << 8) | *s++;
+	id = (id << 8) | *s++;
+	id = (id << 8) | *s++;
+	return id;
 }
 
 void Puzzle06_A_2019()
 {
-	Puzzle06_A(R"(z:\AoCInput\2019\Puzzle06.txt)");
+	const size_t MAX_ORBITALS = 3;
+
+	HashMap<uint32_t, SmallVector<uint32_t, MAX_ORBITALS>> orbits(4 * 1024, 0xffffffff);
+	while (PuzzleInput::NextLine())
+	{
+		uint32_t a = IdFromInput();
+		PuzzleInput::DropChar();
+		uint32_t b = IdFromInput();
+
+		orbits[a].PushBack(b);
+		orbits[b]; // Make sure b exists as a key in the map
+	}
+
+	const uint32_t start = IdFromString("COM");
+
+	array<vector<uint32_t>, 2> searchQueues;
+	searchQueues[0].reserve(32);
+	searchQueues[1].reserve(32);
+	searchQueues[0].push_back(start);
+
+	HashSet<uint32_t> queued(4 * 1024, 0xffffffff);
+	queued.Insert(start);
 
 	int32_t answer = 0;
+	for (int32_t steps = 0; /***/; steps++)
+	{
+		const vector<uint32_t>& currentQueue = searchQueues[steps & 1];
+		if (currentQueue.empty())
+			break;
+
+		vector<uint32_t>& nextQueue = searchQueues[(steps + 1) & 1];
+		nextQueue.clear();
+
+		for (uint32_t currentPlanet : currentQueue)
+		{
+			const SmallVector<uint32_t, MAX_ORBITALS>& outerPlanets = orbits.At(currentPlanet);
+			for (uint32_t outerPlanet : outerPlanets)
+			{
+				if (queued.Insert(outerPlanet))
+				{
+					assert(outerPlanet);
+					nextQueue.push_back(outerPlanet);
+					answer += steps + 1;
+				}
+			}
+		}
+	}
+
 	PuzzleOutput::Submit(2019, 6, 1, answer);
 }
 
 void Puzzle06_B_2019()
 {
-	Puzzle06_B(R"(z:\AoCInput\2019\Puzzle06.txt)");
+	const size_t MAX_ORBITALS = 4;
+
+	HashMap<uint32_t, SmallVector<uint32_t, MAX_ORBITALS>> orbits(4 * 1024, 0xffffffff);
+	while (PuzzleInput::NextLine())
+	{
+		uint32_t a = IdFromInput();
+		PuzzleInput::DropChar();
+		uint32_t b = IdFromInput();
+
+		orbits[a].PushBack(b);
+		orbits[b].PushBack(a);
+	}
+
+	const uint32_t start = IdFromString("YOU");
+	const uint32_t end = IdFromString("SAN");
+
+	array<vector<uint32_t>, 2> searchQueues;
+	searchQueues[0].reserve(32);
+	searchQueues[1].reserve(32);
+	searchQueues[0].push_back(start);
+
+	HashSet<uint32_t> queued(4 * 1024, 0xffffffff);
+	queued.Insert(start);
 
 	int32_t answer = 0;
+	for (int32_t steps = 0; answer == 0; steps++)
+	{
+		const vector<uint32_t>& currentQueue = searchQueues[steps & 1];
+		if (currentQueue.empty())
+			break;
+
+		vector<uint32_t>& nextQueue = searchQueues[(steps + 1) & 1];
+		nextQueue.clear();
+
+		for (uint32_t currentPlanet : currentQueue)
+		{
+			if (currentPlanet == end)
+			{
+				answer = steps - 2;
+				break;
+			}
+
+			const SmallVector<uint32_t, MAX_ORBITALS>& outerPlanets = orbits.At(currentPlanet);
+			for (uint32_t outerPlanet : outerPlanets)
+			{
+				if (queued.Insert(outerPlanet))
+				{
+					assert(outerPlanet);
+					nextQueue.push_back(outerPlanet);
+				}
+			}
+		}
+	}
+
 	PuzzleOutput::Submit(2019, 6, 2, answer);
 }
