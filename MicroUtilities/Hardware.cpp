@@ -6,6 +6,7 @@
 
 #ifdef PICO_ON_DEVICE
 #include <pico/stdlib.h>
+#include <pico/divider.h>
 #ifdef CYW43_WL_GPIO_LED_PIN
 #include <pico/cyw43_arch.h>
 #endif
@@ -71,6 +72,10 @@ static size_t PsramSizeBytes = 0;
 
 void Hardware::Initialise()
 {
+#if PICO_RP2350
+    //set_sys_clock_khz(300000, true);
+#endif
+
 #if defined(PICO_DEFAULT_LED_PIN)
 	gpio_init(PICO_DEFAULT_LED_PIN);
 	gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
@@ -122,6 +127,11 @@ void Hardware::FlashingStop(int8_t count)
 
 		sleep_ms(500);
 	}
+}
+
+int32_t Hardware::DivModRem(int32_t a, int32_t b, int32_t* rem)
+{
+    return divmod_s32s32_rem(a, b, rem);
 }
 
 #if PICO_RP2350
