@@ -3,136 +3,162 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle07_2019_Types
 {
+	struct Polynomial
+	{
+		int32_t A;
+		int32_t B;
+
+		int32_t operator()(int32_t x) const
+		{
+			return (A * x) + B;
+		}
+	};
+
+	struct BlackBox
+	{
+		array<Polynomial, 10> Func;
+	};
 }
 
 using namespace Puzzle07_2019_Types;
 
-static int64_t SignalFromPhasesPart1(const vector<int64_t>& program, const vector<int64_t>& phases)
+static Polynomial ExtractPolynomial(const vector<int32_t>& program, int32_t phase)
 {
-	vector<Intputer> amplifiers(5);
-	vector<deque<int64_t>> ioQueues(6);
-	for (size_t i = 0; i < amplifiers.size(); i++)
-	{
-		amplifiers[i].CopyProgram(program);
-		amplifiers[i].SetReadWriteQueues(&ioQueues[i], &ioQueues[i + 1]);
-	}
+	Polynomial p;
 
-	// Starting phases
-	for (size_t i = 0; i < phases.size(); i++)
 	{
-		ioQueues[i].push_back(phases[i]);
-	}
+		uIntputerWithIO<int32_t> puter;
+		puter.CopyProgram(program);
+		puter.GetReadQueue()->push_back(phase);
+		puter.GetReadQueue()->push_back(0);
 
-	// Starting signal
-	ioQueues[0].push_back(0);
-
-	for (size_t amp = 0; amp < amplifiers.size(); amp++)
-	{
-		auto exec = amplifiers[amp].Execute();
-		assert(exec == Intputer::ExecutionResult::Finished);
+		auto exec = puter.Execute();
+		assert(exec == uIntputer<int32_t>::ExecutionResult::Finished);
 		(void)exec;
+
+		p.B = puter.GetWriteQueue()->back();
 	}
 
-	return ioQueues.back().back();
+	{
+		uIntputerWithIO<int32_t> puter;
+		puter.CopyProgram(program);
+		puter.GetReadQueue()->push_back(phase);
+		puter.GetReadQueue()->push_back(1);
+
+		auto exec = puter.Execute();
+		assert(exec == uIntputer<int32_t>::ExecutionResult::Finished);
+		(void)exec;
+
+		p.A = puter.GetWriteQueue()->back() - p.B;
+	}
+
+	return p;
 }
 
-static int64_t SignalFromPhasesPart2(const vector<int64_t>& program, const vector<int64_t>& phases)
+static BlackBox ExtractBlackBox(const vector<int32_t>& program, int32_t phase)
 {
-	vector<Intputer> amplifiers(5);
-	vector<deque<int64_t>> ioQueues(5);
-	for (size_t i = 0; i < amplifiers.size(); i++)
+	// Black boxes are a combination of 10 of these operations
+	const array<Polynomial, 3> operations =
 	{
-		amplifiers[i].CopyProgram(program);
-		amplifiers[i].SetReadWriteQueues(&ioQueues[i], &ioQueues[(i + 1) % ioQueues.size()]);
+		Polynomial{ 2, 0 }, // * 2
+		Polynomial{ 1, 1 }, // + 1
+		Polynomial{ 1, 2 }, // + 2
+	};
+
+	uIntputerWithIO<int32_t> puter;
+	puter.CopyProgram(program);
+	puter.GetReadQueue()->push_back(phase);
+
+	BlackBox bb;
+	for (size_t i = 0; i < 10; i++)
+	{
+		puter.GetReadQueue()->push_back(0);
+		puter.Execute();
+
+		bb.Func[i] = operations[puter.GetWriteQueue()->back()];
 	}
+	return bb;
+}
 
-	// Starting phases
-	for (size_t i = 0; i < phases.size(); i++)
+static int32_t SignalFromPolynomials(const vector<Polynomial>& polynomials, const vector<int32_t>& phases)
+{
+	int32_t signal = 0;
+	for (int32_t phase : phases)
 	{
-		ioQueues[i].push_back(phases[i]);
+		signal = polynomials[phase](signal);
 	}
+	return signal;
+}
 
-	// Starting signal
-	ioQueues[0].push_back(0);
-
-	size_t finished = 0;
-	do
+static int32_t SignalFromBlackBoxes(const vector<BlackBox>& blackBoxes, const vector<int32_t>& phases)
+{
+	int32_t signal = 0;
+	for (size_t stage = 0; stage < 10; stage++)
 	{
-		for (size_t amp = 0; amp < amplifiers.size(); amp++)
+		for (int32_t phase : phases)
 		{
-			auto exec = amplifiers[amp].Execute();
-			finished += exec == Intputer::ExecutionResult::Finished ? 1 : 0;
+			signal = blackBoxes[phase - 5].Func[stage](signal);
 		}
-
-		assert((finished == 0) || (finished == amplifiers.size()));
-
-	} while (finished < amplifiers.size());
-
-	return ioQueues.front().back();
-}
-
-static void Puzzle07_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const auto startingProgram = ReadAsVectorOfNumbers(ReadSingleLine(input));
-
-	int64_t maximumSignal = numeric_limits<int64_t>::min();
-
-	vector<int64_t> phases{ 0, 1, 2, 3, 4 };
-	do
-	{
-		maximumSignal = max(maximumSignal, SignalFromPhasesPart1(startingProgram, phases));
-
-	} while (next_permutation(phases.begin(), phases.end()));
-
-	int64_t answer = maximumSignal;
-
-	printf("[2019] Puzzle07_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle07_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const auto startingProgram = ReadAsVectorOfNumbers(ReadSingleLine(input));
-
-	int64_t maximumSignal = numeric_limits<int64_t>::min();
-
-	vector<int64_t> phases{ 5, 6, 7, 8, 9 };
-	do
-	{
-		maximumSignal = max(maximumSignal, SignalFromPhasesPart2(startingProgram, phases));
-
-	} while (next_permutation(phases.begin(), phases.end()));
-
-	int64_t answer = maximumSignal;
-
-	printf("[2019] Puzzle07_B: %" PRId64 "\n", answer);
+	}
+	return signal;
 }
 
 void Puzzle07_A_2019()
 {
-	Puzzle07_A(R"(z:\AoCInput\2019\Puzzle07.txt)");
+	vector<int32_t> startingProgram;
+	startingProgram.reserve(600);
+	while (PuzzleInput::NextLine())
+	{
+		startingProgram.push_back(Parse::GetInt32());
+	}
 
-	int32_t answer = 0;
+	vector<Polynomial> amplifiers;
+	amplifiers.reserve(5);
+
+	vector<int32_t> phases{ 0, 1, 2, 3, 4 };
+	for (int32_t phase : phases)
+	{
+		amplifiers.push_back(ExtractPolynomial(startingProgram, phase));
+	}
+
+	MaxValue<int32_t> maximumSignal;
+	do
+	{
+		maximumSignal.Update(SignalFromPolynomials(amplifiers, phases));
+
+	} while (next_permutation(phases.begin(), phases.end()));
+
+	int32_t answer = maximumSignal.Get();
 	PuzzleOutput::Submit(2019, 7, 1, answer);
 }
 
 void Puzzle07_B_2019()
 {
-	Puzzle07_B(R"(z:\AoCInput\2019\Puzzle07.txt)");
+	vector<int32_t> startingProgram;
+	startingProgram.reserve(600);
+	while (PuzzleInput::NextLine())
+	{
+		startingProgram.push_back(Parse::GetInt32());
+	}
 
-	int32_t answer = 0;
+	vector<BlackBox> amplifiers;
+	amplifiers.reserve(5);
+
+	vector<int32_t> phases{ 5, 6, 7, 8, 9 };
+	for (int32_t phase : phases)
+	{
+		amplifiers.push_back(ExtractBlackBox(startingProgram, phase));
+	}
+
+	MaxValue<int32_t> maximumSignal;
+	do
+	{
+		maximumSignal.Update(SignalFromBlackBoxes(amplifiers, phases));
+
+	} while (next_permutation(phases.begin(), phases.end()));
+
+	int32_t answer = maximumSignal.Get();
 	PuzzleOutput::Submit(2019, 7, 2, answer);
 }

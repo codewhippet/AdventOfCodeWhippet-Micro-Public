@@ -17,8 +17,8 @@
 #include <malloc.h>
 #endif
 
-#define ENABLE_TIMING 0
-#define ENABLE_MEMORY_WATERMARK 0
+#define ENABLE_TIMING 1
+#define ENABLE_MEMORY_WATERMARK 1
 #define ENABLE_ALLOCATION_CHECK 1
 
 enum class OperatingMode

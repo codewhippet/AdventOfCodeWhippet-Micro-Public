@@ -14,6 +14,7 @@
 #endif
 
 const size_t ReadaheadBufferSize = 64;
+const size_t ReadaheadBufferMask = ReadaheadBufferSize - 1;
 
 struct PuzzleInputImpl
 {
@@ -104,7 +105,7 @@ static void FillReadaheadBuffer()
 			Input.HasInput = false;
 			break;
 		}
-		Input.ReadaheadBuffer[Input.SourceReadIndex++ % sizeof(Input.ReadaheadBuffer)] = (char)c;
+		Input.ReadaheadBuffer[Input.SourceReadIndex++ & ReadaheadBufferMask] = (char)c;
 	}
 }
 
@@ -223,7 +224,7 @@ int PuzzleInput::GetChar()
 	if (Input.PuzzleReadIndex == Input.SourceReadIndex)
 		return EOF;
 
-	int c = Input.ReadaheadBuffer[Input.PuzzleReadIndex++ % sizeof(Input.ReadaheadBuffer)];
+	int c = Input.ReadaheadBuffer[Input.PuzzleReadIndex++ & ReadaheadBufferMask];
 	FillReadaheadBuffer();
 	return c;
 }
@@ -233,7 +234,7 @@ int PuzzleInput::PeekChar()
 	if (Input.PuzzleReadIndex == Input.SourceReadIndex)
 		return EOF;
 
-	int c = Input.ReadaheadBuffer[Input.PuzzleReadIndex % sizeof(Input.ReadaheadBuffer)];
+	int c = Input.ReadaheadBuffer[Input.PuzzleReadIndex & ReadaheadBufferMask];
 	FillReadaheadBuffer();
 	return c;
 }
