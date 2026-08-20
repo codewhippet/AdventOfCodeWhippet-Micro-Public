@@ -44,6 +44,9 @@ int64_t ReadFirstNumber(const std::string& s);
 std::vector<int64_t> ReadAsVectorOfNumbers(const char *c);
 std::vector<int64_t> ReadAsVectorOfNumbers(const std::string& s);
 
+std::vector<int32_t> ReadAsVectorOfNumbers32(const char* c);
+std::vector<int32_t> ReadAsVectorOfNumbers32(const std::string& s);
+
 //////////////////////////////////////////////////////////////////////////
 
 namespace Utils

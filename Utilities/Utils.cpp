@@ -106,6 +106,32 @@ std::vector<int64_t> ReadAsVectorOfNumbers(const std::string& s)
 	return ReadAsVectorOfNumbers(s.data());
 }
 
+std::vector<int32_t> ReadAsVectorOfNumbers32(const char* c)
+{
+	std::vector<int32_t> numbers;
+
+	while (true)
+	{
+		while (c[0] != '\0' && !isdigit(c[0]) && c[0] != '-')
+			c++;
+
+		if (c[0] == '\0')
+			break;
+
+		numbers.push_back(atoi(c));
+
+		while (isdigit(c[0]) || c[0] == '-')
+			c++;
+	}
+
+	return numbers;
+}
+
+std::vector<int32_t> ReadAsVectorOfNumbers32(const std::string& s)
+{
+	return ReadAsVectorOfNumbers32(s.data());
+}
+
 int64_t Utils::ToNumber(const std::ssub_match& m)
 {
 	return atoll(m.str().c_str());
