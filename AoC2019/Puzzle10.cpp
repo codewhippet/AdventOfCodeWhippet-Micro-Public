@@ -3,124 +3,283 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle10_2019_Types
 {
+	template <typename TYPE>
+	class AreaAroundZero
+	{
+	public:
+		AreaAroundZero(int32_t size)
+			: Size(size)
+			, Stride((size * 2) + 1)
+			, Data(Stride* Stride)
+		{
+		}
+
+	protected:
+		int32_t Index(const Vec2Int& v) const
+		{
+			int32_t x = v.X + Size;
+			int32_t y = v.Y + Size;
+			int32_t index = (y * Stride) + x;
+			return index;
+		}
+
+		int32_t Size;
+		int32_t Stride;
+		vector<TYPE> Data;
+	};
+
+	class GcdCache : private AreaAroundZero<int32_t>
+	{
+	public:
+		GcdCache(int32_t size)
+			: AreaAroundZero(size)
+		{
+		}
+
+		int32_t Get(const Vec2Int& v)
+		{
+			int32_t index = Index(v);
+
+			int32_t scale = Data[index];
+			if (scale == 0)
+			{
+				scale = gcd(v.X, v.Y);
+				Data[index] = scale;
+			}
+
+			return scale;
+		}
+	};
+
+	class SeenBuffer : private AreaAroundZero<char>
+	{
+	public:
+		SeenBuffer(int32_t size)
+			: AreaAroundZero(size)
+		{
+		}
+
+		bool HasSeen(const Vec2Int& v)
+		{
+			int32_t index = Index(v);
+
+			bool seenBefore = Data[index];
+			if (!seenBefore)
+			{
+				Data[index] = 1;
+			}
+
+			return seenBefore;
+		}
+
+		void Reset()
+		{
+			memset(Data.data(), 0, Data.size());
+		}
+	};
+
+	struct DestroyedTracker
+	{
+		int32_t TargetsLeft;
+		Vec2Int LastDestroyed;
+
+		void Update(const Vec2Int& pos)
+		{
+			if (--TargetsLeft == 0)
+			{
+				LastDestroyed = pos;
+			}
+		}
+	};
 }
 
 using namespace Puzzle10_2019_Types;
 
-static Point2 Normalise(const Point2& dir)
+static float AngleFromDirection(const Vec2Int& dir)
 {
-	int64_t scaleFactor = gcd(dir.X, dir.Y);
-	return Point2{ dir.X / scaleFactor, dir.Y / scaleFactor };
-}
-
-static double AngleFromDirection(const Point2& dir)
-{
-	double angle = atan2(dir.X, -dir.Y);
-	return (angle >= 0.0) ? angle : (2.0 * numbers::pi + angle);
-}
-
-static void Puzzle10_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	PointMap asteroidField = ReadPointMap(input);
-
-	map<Point2, set<Point2>> seenFrom;
-	for (const auto &asteroidA : asteroidField.Data)
-	{
-		for (const auto& asteroidB : asteroidField.Data)
-		{
-			if (asteroidA == asteroidB)
-				continue;
-
-			Point2 heading = Normalise(asteroidB.first - asteroidA.first);
-			seenFrom[asteroidA.first].insert(heading);
-		}
-	}
-
-	int64_t answer = ranges::max(seenFrom
-		| views::transform([&](const auto& from)
-			{
-				return from.second.size();
-			}));
-
-	printf("[2019] Puzzle10_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle10_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	PointMap asteroidField = ReadPointMap(input);
-
-	using distanceToTargets = map<int64_t, Point2>;
-	using headingToDistanceToTargets = map<double, distanceToTargets>;
-
-	map<Point2, headingToDistanceToTargets> targetsFrom;
-	for (const auto& asteroidA : asteroidField.Data)
-	{
-		for (const auto& asteroidB : asteroidField.Data)
-		{
-			if (asteroidA == asteroidB)
-				continue;
-
-			Point2 heading = Normalise(asteroidB.first - asteroidA.first);
-			double headingAngle = AngleFromDirection(heading);
-			int64_t distanceToTarget = ManhattanDistance(asteroidA.first, asteroidB.first);
-
-			targetsFrom[asteroidA.first][headingAngle][distanceToTarget] = asteroidB.first;
-		}
-	}
-
-	auto bestAsteroid = max_element(targetsFrom.begin(), targetsFrom.end(),
-		[](const auto& a, const auto& b)
-		{
-			return a.second.size() < b.second.size();
-		});
-	headingToDistanceToTargets targets = bestAsteroid->second;
-
-	vector<Point2> destroyed;
-	while (destroyed.size() < 200)
-	{
-		for (auto& targetsByDistance : targets)
-		{
-			if (targetsByDistance.second.empty() == false)
-			{
-				Point2 nextTarget = targetsByDistance.second.begin()->second;
-				destroyed.push_back(nextTarget);
-				targetsByDistance.second.erase(targetsByDistance.second.begin());
-			}
-		}
-	}
-
-	Point2 twoHundredth = destroyed[199];
-	int64_t answer = twoHundredth.X * 100 + twoHundredth.Y;
-
-	printf("[2019] Puzzle10_B: %" PRId64 "\n", answer);
+	float angle = atan2f(static_cast<float>(dir.X), static_cast<float>(-dir.Y));
+	return (angle >= 0.0) ? angle : (2.0f * numbers::pi_v<float> + angle);
 }
 
 void Puzzle10_A_2019()
 {
-	Puzzle10_A(R"(z:\AoCInput\2019\Puzzle10.txt)");
+	vector<Vec2Int> asteroids;
+	asteroids.reserve(512);
 
-	int32_t answer = 0;
+	Vec2Int pos{};
+	MaxValue<int32_t> maxX;
+	for (int c = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
+	{
+		switch (c)
+		{
+		case '#':
+			asteroids.push_back(pos);
+			pos.X++;
+			break;
+
+		case '\n':
+			pos.X = 0;
+			pos.Y++;
+			break;
+
+		default:
+			pos.X++;
+			break;
+		}
+
+		maxX.Update(pos.X);
+	}
+
+	const int32_t width = maxX.Get();
+	assert(width == pos.Y);
+
+	MaxValue<int32_t> mostVisible;
+
+	GcdCache gcdCache(width);
+	SeenBuffer seen(width);
+	for (size_t i = 0; i < asteroids.size(); i++)
+	{
+		seen.Reset();
+
+		int32_t visible = 0;
+		for (size_t j = 0; j < asteroids.size(); j++)
+		{
+			if (i == j)
+				continue;
+
+			Vec2Int heading = asteroids[j] - asteroids[i];
+			int32_t scale = gcdCache.Get(heading);
+			if (scale != 1)
+			{
+				heading.X /= scale;
+				heading.Y /= scale;
+			}
+
+			if (seen.HasSeen(heading) == false)
+			{
+				visible++;
+			}
+		}
+
+		mostVisible.Update(visible);
+	}
+
+	int32_t answer = mostVisible.Get();
 	PuzzleOutput::Submit(2019, 10, 1, answer);
 }
 
 void Puzzle10_B_2019()
 {
-	Puzzle10_B(R"(z:\AoCInput\2019\Puzzle10.txt)");
+	vector<Vec2Int> asteroids;
+	asteroids.reserve(512);
 
-	int32_t answer = 0;
+	Vec2Int pos{};
+	MaxValue<int32_t> maxX;
+	for (int c = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
+	{
+		switch (c)
+		{
+		case '#':
+			asteroids.push_back(pos);
+			pos.X++;
+			break;
+
+		case '\n':
+			pos.X = 0;
+			pos.Y++;
+			break;
+
+		default:
+			pos.X++;
+			break;
+		}
+
+		maxX.Update(pos.X);
+	}
+
+	const int32_t width = maxX.Get();
+	assert(width == pos.Y);
+
+	int32_t maxVisible = 0;
+	size_t bestIndex = 0;
+
+	GcdCache gcdCache(width);
+
+	{
+		SeenBuffer seen(width);
+		for (size_t i = 0; i < asteroids.size(); i++)
+		{
+			seen.Reset();
+
+			int32_t visible = 0;
+			for (size_t j = 0; j < asteroids.size(); j++)
+			{
+				if (i == j)
+					continue;
+
+				Vec2Int heading = asteroids[j] - asteroids[i];
+				int32_t scale = gcdCache.Get(heading);
+				if (scale != 1)
+				{
+					heading.X /= scale;
+					heading.Y /= scale;
+				}
+
+				if (seen.HasSeen(heading) == false)
+				{
+					visible++;
+				}
+			}
+
+			if (visible > maxVisible)
+			{
+				maxVisible = visible;
+				bestIndex = i;
+			}
+		}
+	}
+
+	const Vec2Int stationLocation = asteroids[bestIndex];
+
+	vector<tuple<float, int32_t, int32_t>> targetOrdering;
+	targetOrdering.reserve(asteroids.size() - 1);
+	for (int32_t i = 0; i < static_cast<int32_t>(asteroids.size()); i++)
+	{
+		if (i == bestIndex)
+			continue;
+
+		Vec2Int heading = asteroids[i] - stationLocation;
+		int32_t scale = gcdCache.Get(heading);
+		if (scale != 1)
+		{
+			heading.X /= scale;
+			heading.Y /= scale;
+		}
+
+		float headingAngle = AngleFromDirection(heading);
+		int32_t distanceToTarget = ManhattanDistance(asteroids[i], stationLocation);
+
+		targetOrdering.push_back({ headingAngle, distanceToTarget, i });
+	}
+
+	ranges::sort(targetOrdering);
+
+	DestroyedTracker tracker;
+	tracker.TargetsLeft = 200;
+
+	float lastHeadingDestroyed = -1.0f;
+	for (size_t i = 0; tracker.TargetsLeft > 0; i = ((i + 1) == targetOrdering.size() ? 0 : i + 1))
+	{
+		if ((get<0>(targetOrdering[i]) == lastHeadingDestroyed) || (get<2>(targetOrdering[i]) == -1))
+			continue;
+
+		tracker.Update(asteroids[get<2>(targetOrdering[i])]);
+		lastHeadingDestroyed = get<0>(targetOrdering[i]);
+		get<2>(targetOrdering[i]) = -1;
+	}
+
+	int32_t answer = tracker.LastDestroyed.X * 100 + tracker.LastDestroyed.Y;
 	PuzzleOutput::Submit(2019, 10, 2, answer);
 }
