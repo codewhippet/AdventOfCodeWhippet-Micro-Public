@@ -86,8 +86,6 @@ struct uIntputerIO
 	std::deque<REGISTER_TYPE> Write;
 };
 
-extern template struct uIntputerIO<int32_t>;
-
 template <typename REGISTER_TYPE>
 class uIntputer
 {
@@ -143,8 +141,6 @@ protected:
 	std::deque<REGISTER_TYPE>* WriteQueue = nullptr;
 };
 
-extern template class uIntputer<int32_t>;
-
 template <typename REGISTER_TYPE>
 class uIntputerWithIO : public uIntputer<REGISTER_TYPE>
 {
@@ -158,4 +154,10 @@ private:
 	uIntputerIO<REGISTER_TYPE> Io;
 };
 
+extern template struct uIntputerIO<int32_t>;
+extern template class uIntputer<int32_t>;
 extern template class uIntputerWithIO<int32_t>;
+
+extern template struct uIntputerIO<int64_t>;
+extern template class uIntputer<int64_t>;
+extern template class uIntputerWithIO<int64_t>;

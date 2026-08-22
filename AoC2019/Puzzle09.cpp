@@ -3,72 +3,42 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle09_2019_Types
 {
 }
 
 using namespace Puzzle09_2019_Types;
 
-static void Puzzle09_A(const string &filename)
+void Puzzle09_A_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Intputer puter;
-	puter.ReadProgram(input);
+	uIntputer<int64_t> puter;
+	puter.ReadProgramFromInput(1024 + 512);
 
 	deque<int64_t> in{ 1 };
 	deque<int64_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto result = puter.Execute();
-	assert(result == Intputer::ExecutionResult::Finished);
+	assert(result == uIntputer<int64_t>::ExecutionResult::Finished);
 	(void)result;
 
 	int64_t answer = out.front();
-
-	printf("[2019] Puzzle09_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2019, 9, 1, answer);
 }
 
-
-static void Puzzle09_B(const string& filename)
+void Puzzle09_B_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Intputer puter;
-	puter.ReadProgram(input);
+	uIntputer<int64_t> puter;
+	puter.ReadProgramFromInput(1024 + 512);
 
 	deque<int64_t> in{ 2 };
 	deque<int64_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto result = puter.Execute();
-	assert(result == Intputer::ExecutionResult::Finished);
+	assert(result == uIntputer<int64_t>::ExecutionResult::Finished);
 	(void)result;
 
 	int64_t answer = out.front();
-
-	printf("[2019] Puzzle09_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle09_A_2019()
-{
-	Puzzle09_A(R"(z:\AoCInput\2019\Puzzle09.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 9, 1, answer);
-}
-
-void Puzzle09_B_2019()
-{
-	Puzzle09_B(R"(z:\AoCInput\2019\Puzzle09.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2019, 9, 2, answer);
 }

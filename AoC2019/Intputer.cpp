@@ -292,6 +292,9 @@ void uIntputer<REGISTER_TYPE>::ReadProgramFromInput(size_t memorySize)
 		REGISTER_TYPE inst = Parse::GetInt32();
 		Program.push_back(inst);
 	}
+
+	// Add empty memory
+	Program.resize(memorySize);
 }
 
 template<typename REGISTER_TYPE>
@@ -545,3 +548,7 @@ uIntputerWithIO<REGISTER_TYPE>::uIntputerWithIO(size_t memorySize)
 template struct uIntputerIO<int32_t>;
 template class uIntputer<int32_t>;
 template class uIntputerWithIO<int32_t>;
+
+template struct uIntputerIO<int64_t>;
+template class uIntputer<int64_t>;
+template class uIntputerWithIO<int64_t>;
