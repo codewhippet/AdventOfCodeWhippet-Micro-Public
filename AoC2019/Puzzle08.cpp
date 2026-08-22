@@ -2,99 +2,95 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle08_2019_Types
 {
+	struct FewestTracker
+	{
+		array<int32_t, 3> Values = { numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max() };
+
+		void Update(const array<int32_t, 3>& values)
+		{
+			if (values[0] < Values[0])
+			{
+				Values = values;
+			}
+		}
+	};
 }
 
 using namespace Puzzle08_2019_Types;
 
-static void Puzzle08_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const string imageData = ReadSingleLine(input);
-	const int64_t width = 25;
-	const int64_t height = 6;
-	const int64_t layerSize = width * height;
-
-	string fewestZerosLayer;
-	int64_t fewestZeros = numeric_limits<int64_t>::max();
-	for (int64_t layerStart = 0; layerStart < (int64_t)imageData.size(); layerStart += layerSize)
-	{
-		string line = imageData.substr(layerStart, layerSize);
-		int64_t numZeros = ranges::count(line, '0');
-		if (numZeros < fewestZeros)
-		{
-			fewestZeros = numZeros;
-			fewestZerosLayer = line;
-		}
-	}
-
-	int64_t answer = ranges::count(fewestZerosLayer, '1') * ranges::count(fewestZerosLayer, '2');
-
-	printf("[2019] Puzzle08_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle08_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const string imageData = ReadSingleLine(input);
-	const int64_t width = 25;
-	const int64_t height = 6;
-
-	ArrayMap2D image{ {}, width, height, '-' };
-	Point2 cursor;
-	for (char c : imageData)
-	{
-		if (image(cursor) == '-')
-		{
-			switch (c)
-			{
-			case '0':
-				image(cursor) = '.';
-				break;
-
-			case '1':
-				image(cursor) = '*';
-				break;
-			}
-		}
-
-		if (++cursor.X == width)
-		{
-			cursor.X = 0;
-			if (++cursor.Y == height)
-			{
-				cursor.Y = 0;
-			}
-		}
-	}
-
-	printf("[2019] Puzzle08_B:\n");
-	image.Print();
-}
-
 void Puzzle08_A_2019()
 {
-	Puzzle08_A(R"(z:\AoCInput\2019\Puzzle08.txt)");
+	const int32_t width = 25;
+	const int32_t height = 6;
+	const int32_t layerSize = width * height;
 
-	int32_t answer = 0;
+	FewestTracker tracker;
+	while (PuzzleInput::PeekChar() != '\n')
+	{
+		array<int32_t, 3> values = {};
+		for (int32_t i = 0; i < layerSize; i++)
+		{
+			values[PuzzleInput::GetChar() - '0']++;
+		}
+		tracker.Update(values);
+	}
+
+	int64_t answer = tracker.Values[1] * tracker.Values[2];;
 	PuzzleOutput::Submit(2019, 8, 1, answer);
 }
 
 void Puzzle08_B_2019()
 {
-	Puzzle08_B(R"(z:\AoCInput\2019\Puzzle08.txt)");
+	const int32_t width = 25;
+	const int32_t height = 6;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 8, 2, answer);
+	// Make sure the image data is printf printable
+	vector<char> line(width + 1, '-');
+	line.back() = '\n';
+
+	vector<char> image;
+	image.reserve(line.size() + height + 2);
+	image.push_back('\n');
+	for (int32_t i = 0; i < height; i++)
+	{
+		ranges::copy(line, back_inserter(image));
+	}
+	image.push_back('\0');
+
+	char* const startOfRaster = image.data() + 1;
+	char* const endOfRaster = startOfRaster + ((width + 1) * height);
+
+	char* writeHead = startOfRaster;
+	for (int c = PuzzleInput::GetChar(); c != '\n'; c = PuzzleInput::GetChar())
+	{
+		if (*writeHead == '-')
+		{
+			switch (c)
+			{
+			case '0':
+				*writeHead = ' ';
+				break;
+
+			case '1':
+				*writeHead = '#';
+				break;
+			}
+		}
+
+		writeHead++;
+
+		if (*writeHead == '\n')
+		{
+			writeHead++;
+		}
+
+		if (writeHead == endOfRaster)
+		{
+			writeHead = startOfRaster;
+		}
+	}
+
+	PuzzleOutput::Submit(2019, 8, 2, image.data());
 }
