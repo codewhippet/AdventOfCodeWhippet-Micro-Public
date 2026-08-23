@@ -53,6 +53,11 @@ int32_t Parse::GetInt32()
 	return GetInt<int32_t>();
 }
 
+int64_t Parse::GetInt64()
+{
+	return GetInt<int64_t>();
+}
+
 uint8_t Parse::GetUint8()
 {
 	return GetUint<int8_t>();

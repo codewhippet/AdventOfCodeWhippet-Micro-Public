@@ -264,6 +264,23 @@ IntputerWithIO::IntputerWithIO(std::istream& input)
 
 // ----------------------------------------------------------------------------
 
+template <typename READ_TYPE>
+READ_TYPE ReadIntFromInput();
+
+template <>
+int32_t ReadIntFromInput<int32_t>()
+{
+	return Parse::GetInt32();
+}
+
+template <>
+int64_t ReadIntFromInput<int64_t>()
+{
+	return Parse::GetInt64();
+}
+
+// ----------------------------------------------------------------------------
+
 template<typename REGISTER_TYPE>
 uIntputer<REGISTER_TYPE>::uIntputer(size_t memorySize)
 {
@@ -289,7 +306,7 @@ void uIntputer<REGISTER_TYPE>::ReadProgramFromInput(size_t memorySize)
 	Program.reserve(memorySize);
 	while (PuzzleInput::NextLine())
 	{
-		REGISTER_TYPE inst = Parse::GetInt32();
+		REGISTER_TYPE inst = ReadIntFromInput< REGISTER_TYPE>();
 		Program.push_back(inst);
 	}
 

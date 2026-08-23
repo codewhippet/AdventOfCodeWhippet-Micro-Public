@@ -7,6 +7,7 @@ namespace Parse
 	int8_t GetInt8();
 	int16_t GetInt16();
 	int32_t GetInt32();
+	int64_t GetInt64();
 
 	uint8_t GetUint8();
 	uint16_t GetUint16();
