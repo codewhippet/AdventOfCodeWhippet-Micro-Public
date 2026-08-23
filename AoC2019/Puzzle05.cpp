@@ -18,7 +18,7 @@ void Puzzle05_A_2019()
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto exec = puter.Execute();
-	assert(exec == uIntputer<int32_t>::ExecutionResult::Finished);
+	assert(exec == uIntputerExecutionResult::Finished);
 	(void)exec;
 
 	int32_t answer = out.back();
@@ -35,7 +35,7 @@ void Puzzle05_B_2019()
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto exec = puter.Execute();
-	assert(exec == uIntputer<int32_t>::ExecutionResult::Finished);
+	assert(exec == uIntputerExecutionResult::Finished);
 	(void)exec;
 
 	int32_t answer = out.back();

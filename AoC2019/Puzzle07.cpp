@@ -35,7 +35,7 @@ static Polynomial ExtractPolynomial(const vector<int32_t>& program, int32_t phas
 		puter.GetReadQueue()->push_back(0);
 
 		auto exec = puter.Execute();
-		assert(exec == uIntputer<int32_t>::ExecutionResult::Finished);
+		assert(exec == uIntputerExecutionResult::Finished);
 		(void)exec;
 
 		p.B = puter.GetWriteQueue()->back();
@@ -48,7 +48,7 @@ static Polynomial ExtractPolynomial(const vector<int32_t>& program, int32_t phas
 		puter.GetReadQueue()->push_back(1);
 
 		auto exec = puter.Execute();
-		assert(exec == uIntputer<int32_t>::ExecutionResult::Finished);
+		assert(exec == uIntputerExecutionResult::Finished);
 		(void)exec;
 
 		p.A = puter.GetWriteQueue()->back() - p.B;

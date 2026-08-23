@@ -19,7 +19,7 @@ void Puzzle09_A_2019()
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto result = puter.Execute();
-	assert(result == uIntputer<int64_t>::ExecutionResult::Finished);
+	assert(result == uIntputerExecutionResult::Finished);
 	(void)result;
 
 	int64_t answer = out.front();
@@ -36,7 +36,7 @@ void Puzzle09_B_2019()
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto result = puter.Execute();
-	assert(result == uIntputer<int64_t>::ExecutionResult::Finished);
+	assert(result == uIntputerExecutionResult::Finished);
 	(void)result;
 
 	int64_t answer = out.front();

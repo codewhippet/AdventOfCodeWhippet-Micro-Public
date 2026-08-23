@@ -86,18 +86,18 @@ struct uIntputerIO
 	std::deque<REGISTER_TYPE> Write;
 };
 
+enum class uIntputerExecutionResult
+{
+	Finished,
+	PendingIo,
+	Breakpoint,
+	Exception,
+};
+
 template <typename REGISTER_TYPE>
 class uIntputer
 {
 public:
-
-	enum class ExecutionResult
-	{
-		Finished,
-		PendingIo,
-		Breakpoint,
-		Exception,
-	};
 
 	uIntputer() = default;
 	uIntputer(uIntputer&&) = default;
@@ -109,7 +109,7 @@ public:
 	void CopyProgram(const std::vector<REGISTER_TYPE>& program);
 	void Reset(const std::vector<REGISTER_TYPE>& program);
 
-	ExecutionResult Execute(REGISTER_TYPE breakAfter = std::numeric_limits<REGISTER_TYPE>::max());
+	uIntputerExecutionResult Execute(REGISTER_TYPE breakAfter = std::numeric_limits<REGISTER_TYPE>::max());
 
 	std::deque<REGISTER_TYPE>* GetReadQueue();
 	std::deque<REGISTER_TYPE>* GetWriteQueue();

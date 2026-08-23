@@ -353,13 +353,13 @@ void uIntputer<REGISTER_TYPE>::WriteParam(REGISTER_TYPE parameter, ParameterMode
 }
 
 template<typename REGISTER_TYPE>
-uIntputer<REGISTER_TYPE>::ExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGISTER_TYPE breakAfter)
+uIntputerExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGISTER_TYPE breakAfter)
 {
 	REGISTER_TYPE instructionsExecuted = 0;
 	while (true)
 	{
 		if (instructionsExecuted++ == breakAfter)
-			return ExecutionResult::Breakpoint;
+			return uIntputerExecutionResult::Breakpoint;
 
 		REGISTER_TYPE instruction = Program[PC] % 100;
 		ParameterMode param1Mode = ParameterMode((Program[PC] / 100) % 10);
@@ -370,7 +370,7 @@ uIntputer<REGISTER_TYPE>::ExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGI
 		switch (instruction)
 		{
 		case 99:
-			return ExecutionResult::Finished;
+			return uIntputerExecutionResult::Finished;
 
 		case 1:
 			{
@@ -393,10 +393,10 @@ uIntputer<REGISTER_TYPE>::ExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGI
 		case 3:
 			{
 				if (ReadQueue == nullptr)
-					return ExecutionResult::Exception;
+					return uIntputerExecutionResult::Exception;
 
 				if (ReadQueue->empty())
-					return ExecutionResult::PendingIo;
+					return uIntputerExecutionResult::PendingIo;
 
 				REGISTER_TYPE inValue = ReadQueue->front();
 				ReadQueue->pop_front();
@@ -408,7 +408,7 @@ uIntputer<REGISTER_TYPE>::ExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGI
 		case 4:
 			{
 				if (WriteQueue == nullptr)
-					return ExecutionResult::Exception;
+					return uIntputerExecutionResult::Exception;
 
 				REGISTER_TYPE a = ReadParam(Program[PC + 1], param1Mode);
 				WriteQueue->push_back(a);
@@ -473,11 +473,11 @@ uIntputer<REGISTER_TYPE>::ExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGI
 			break;
 
 		default:
-			return ExecutionResult::Exception;
+			return uIntputerExecutionResult::Exception;
 		}
 	}
 
-	return ExecutionResult::Exception;
+	return uIntputerExecutionResult::Exception;
 }
 
 template<typename REGISTER_TYPE>
