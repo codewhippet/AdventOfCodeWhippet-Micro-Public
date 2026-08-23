@@ -119,6 +119,8 @@ public:
 	void SetReadWriteQueues(std::deque<REGISTER_TYPE>* readQueue, std::deque<REGISTER_TYPE>* writeQueue);
 	void SetReadWriteQueues(uIntputerIO<REGISTER_TYPE>* io);
 
+	void Poke(REGISTER_TYPE address, REGISTER_TYPE value);
+
 protected:
 
 	uIntputer(const uIntputer& other);

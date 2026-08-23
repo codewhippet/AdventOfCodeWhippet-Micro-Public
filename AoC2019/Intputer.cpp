@@ -535,6 +535,12 @@ void uIntputer<REGISTER_TYPE>::SetReadWriteQueues(uIntputerIO<REGISTER_TYPE>* io
 }
 
 template<typename REGISTER_TYPE>
+void uIntputer<REGISTER_TYPE>::Poke(REGISTER_TYPE address, REGISTER_TYPE value)
+{
+	Program[address] = value;
+}
+
+template<typename REGISTER_TYPE>
 uIntputerWithIO<REGISTER_TYPE>::uIntputerWithIO()
 {
 	uIntputer<REGISTER_TYPE>::SetReadWriteQueues(&Io);

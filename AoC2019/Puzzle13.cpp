@@ -12,65 +12,54 @@ namespace Puzzle13_2019_Types
 
 using namespace Puzzle13_2019_Types;
 
-static void Puzzle13_A(const string &filename)
+void Puzzle13_A_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	uIntputer<int32_t> puter(2048 + 512);
 
-	Intputer puter(input);
-
-	deque<int64_t> in;
-	deque<int64_t> out;
+	deque<int32_t> in;
+	deque<int32_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
 	auto exec = puter.Execute();
-	assert(exec == Intputer::ExecutionResult::Finished);
+	assert(exec == uIntputerExecutionResult::Finished);
 	(void)exec;
 
-	map<Point2, int8_t> screen;
+	int32_t answer = 0;
 	for (size_t i = 0; (i + 2) < out.size(); i += 3)
 	{
-		screen[Point2{ out[i + 0], out[i + 1] }] = (int8_t)out[i + 2];
+		if (out[i + 2] == 2)
+		{
+			answer++;
+		}
 	}
 
-	int64_t answer = ranges::count(screen | views::values, 2);
-
-	printf("[2019] Puzzle13_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2019, 13, 1, answer);
 }
 
-
-static void Puzzle13_B(const string& filename)
+void Puzzle13_B_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	uIntputer<int32_t> puter(2048 + 512);
+	puter.Poke(0, 2);
 
-	vector<int64_t> program = ReadAsVectorOfNumbers(ReadSingleLine(input));
-	program[0] = 2;
-
-	Intputer puter;
-	puter.CopyProgram(program);
-
-	deque<int64_t> in;
-	deque<int64_t> out;
+	deque<int32_t> in;
+	deque<int32_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
-	int64_t answer = 0;
+	int32_t answer = 0;
 
-	map<Point2, int8_t> blocks;
+	HashSet<Vec2Int> blocks(1024, Vec2Int::Min());
 	while (true)
 	{
 		puter.Execute();
 		assert(in.empty());
 		assert(!out.empty());
 
-		Point2 ballLocation;
-		Point2 paddleLocation;
+		Vec2Int ballLocation;
+		Vec2Int paddleLocation;
 		for (size_t i = 0; (i + 2) < out.size(); i += 3)
 		{
-			Point2 screenLocation{ out[i + 0], out[i + 1] };
-			if (screenLocation == Point2{ -1, 0 })
+			Vec2Int screenLocation{ out[i + 0], out[i + 1] };
+			if (screenLocation == Vec2Int{ -1, 0 })
 			{
 				answer = out[i + 2];
 			}
@@ -79,15 +68,15 @@ static void Puzzle13_B(const string& filename)
 				switch (out[i + 2])
 				{
 				case 0:
-					blocks.erase(screenLocation);
+					blocks.Erase(screenLocation);
 					break;
 
 				case 2:
-					blocks[screenLocation] = (int8_t)out[i + 2];
+					blocks.Insert(screenLocation);
 					break;
 
 				case 3:
-					assert(paddleLocation == Point2{});
+					assert(paddleLocation == Vec2Int{});
 					paddleLocation = screenLocation;
 					break;
 
@@ -99,7 +88,7 @@ static void Puzzle13_B(const string& filename)
 		}
 		out.clear();
 
-		if (blocks.empty())
+		if (blocks.Size() == 0)
 		{
 			break;
 		}
@@ -118,21 +107,5 @@ static void Puzzle13_B(const string& filename)
 		}
 	}
 
-	printf("[2019] Puzzle13_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle13_A_2019()
-{
-	Puzzle13_A(R"(z:\AoCInput\2019\Puzzle13.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 13, 1, answer);
-}
-
-void Puzzle13_B_2019()
-{
-	Puzzle13_B(R"(z:\AoCInput\2019\Puzzle13.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2019, 13, 2, answer);
 }
