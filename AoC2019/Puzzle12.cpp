@@ -10,6 +10,12 @@ namespace Puzzle12_2019_Types
 		Vec3Int Position;
 		Vec3Int Velocity;
 	};
+
+	struct Moons
+	{
+		array<int32_t, 4> Pos = {};
+		array<int32_t, 4> Vel = {};
+	};
 }
 
 using namespace Puzzle12_2019_Types;
@@ -75,31 +81,45 @@ static void ApplyVelocityXYZ(Moon* m)
 	ApplyVelocity(m, GetZ, SetZ);
 }
 
-template<typename GETTER, typename SETTER>
-static int32_t FindCycleLength(vector<Moon> moons, const GETTER& get, const SETTER& set)
+static void ApplyGravity(Moons* moons)
+{
+	Moons& m = *moons;
+	for (size_t i = 0; i < 3; i++)
+	{
+		for (size_t j = i + 1; j < 4; j++)
+		{
+			if (m.Pos[i] < m.Pos[j])
+			{
+				m.Vel[i]++;
+				m.Vel[j]--;
+			}
+			else if (m.Pos[i] > m.Pos[j])
+			{
+				m.Vel[i]--;
+				m.Vel[j]++;
+			}
+		}
+	}
+}
+
+static void ApplyVelocity(Moons* moons)
+{
+	Moons& m = *moons;
+
+	m.Pos[0] += m.Vel[0];
+	m.Pos[1] += m.Vel[1];
+	m.Pos[2] += m.Vel[2];
+	m.Pos[3] += m.Vel[3];
+}
+
+static int32_t FindCycleLength(Moons* moons)
 {
 	for (int32_t frame = 0; frame < numeric_limits<int32_t>::max() - 1; frame++)
 	{
-		auto applyGravityAxis = [&](const pair<Moon*, Moon*>& p)
-			{
-				ApplyGravity(p, get, set);
-			};
+		ApplyGravity(moons);
+		ApplyVelocity(moons);
 
-		ranges::for_each(AllUnorderedPairs(moons.size())
-			| views::transform([&](const auto& p) -> pair<Moon*, Moon*>
-				{
-					return { &moons[p.first], &moons[p.second] };
-				}),
-			applyGravityAxis);
-
-		auto applyVelocityAxis = [&](Moon* m)
-			{
-				ApplyVelocity(m, get, set);
-			};
-
-		ranges::for_each(moons | views::transform([](Moon& m) { return &m; }), applyVelocityAxis);
-
-		if (ranges::all_of(moons, [&](Moon& m) { return get(m.Velocity) == 0; }))
+		if (ranges::all_of(moons->Vel, [](int32_t v) { return v == 0; }))
 		{
 			return (frame + 1) * 2;
 		}
@@ -142,21 +162,23 @@ void Puzzle12_A_2019()
 
 void Puzzle12_B_2019()
 {
-	vector<Moon> moons;
-	moons.reserve(4);
+	array<Moons, 3> moonAxis;
 
+	size_t moonIndex = 0;
 	while (PuzzleInput::NextLine())
 	{
-		Moon m;
-		m.Position = Vec3Int{ Parse::GetInt32(), Parse::GetInt32(), Parse::GetInt32() };
-		moons.push_back(m);
+		for (size_t axis = 0; axis < 3; axis++)
+		{
+			moonAxis[axis].Pos[moonIndex] = Parse::GetInt32();
+		}
+		moonIndex++;
 
 		PuzzleInput::DropLine();
 	}
 
-	int64_t cycleLengthX = FindCycleLength(moons, GetX, SetX);
-	int64_t cycleLengthY = FindCycleLength(moons, GetY, SetY);
-	int64_t cycleLengthZ = FindCycleLength(moons, GetZ, SetZ);
+	int64_t cycleLengthX = FindCycleLength(&moonAxis[0]);
+	int64_t cycleLengthY = FindCycleLength(&moonAxis[1]);
+	int64_t cycleLengthZ = FindCycleLength(&moonAxis[2]);
 
 	int64_t answer = lcm(lcm(cycleLengthX, cycleLengthY), cycleLengthZ);
 
