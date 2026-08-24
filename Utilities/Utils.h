@@ -8,7 +8,7 @@
 #include "ArrayMap2D.h"
 #include "PointMap.h"
 #include "MD5.h"
-#include "NameDictionary.h"
+#include "NameDictionaryOld.h"
 #include "FileInput.h"
 #include "PointIteration.h"
 

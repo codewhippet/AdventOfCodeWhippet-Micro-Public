@@ -1,7 +1,7 @@
 #include "stdafx.h"
-#include "NameDictionary.h"
+#include "NameDictionaryOld.h"
 
-int64_t NameDictionary::IdFromName(const std::string& name) const
+int64_t NameDictionaryOld::IdFromName(const std::string& name) const
 {
 	std::map<std::string, int64_t>::const_iterator existingId = NameToId.find(name);
 	if (existingId == NameToId.end())
@@ -13,7 +13,7 @@ int64_t NameDictionary::IdFromName(const std::string& name) const
 	return existingId->second;
 }
 
-std::string NameDictionary::NameFromId(int64_t id) const
+std::string NameDictionaryOld::NameFromId(int64_t id) const
 {
 	return IdToName.at(id);
 }

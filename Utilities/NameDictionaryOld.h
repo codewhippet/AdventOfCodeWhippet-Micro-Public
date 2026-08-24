@@ -4,7 +4,7 @@
 #include <map>
 #include <stdint.h>
 
-class NameDictionary
+class NameDictionaryOld
 {
 public:
 

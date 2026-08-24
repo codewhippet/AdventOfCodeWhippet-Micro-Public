@@ -32,7 +32,7 @@ static Puzzle ReadPuzzle(istream& input)
 
 	const regex linePattern{ R"(Valve (\w+) has flow rate=(\d+); tunnels? leads? to valves? (.+))" };
 
-	NameDictionary valveIds;
+	NameDictionaryOld valveIds;
 	vector<vector<int64_t>> edges;
 	for (const auto& m : ReadEachLine(input, linePattern))
 	{
