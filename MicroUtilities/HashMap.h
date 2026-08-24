@@ -183,7 +183,7 @@ public:
 		return false;
 	}
 
-	mapped_type FindOrDefault(const key_type& key, const mapped_type& def)
+	mapped_type FindOrDefault(const key_type& key, const mapped_type& def) const
 	{
 		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
 		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
