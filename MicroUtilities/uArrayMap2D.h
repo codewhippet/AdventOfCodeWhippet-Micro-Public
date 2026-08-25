@@ -2,9 +2,12 @@
 
 #include "Vec2.h"
 #include <iterator>
+#include <memory>
 #include <stdint.h>
 
 class uArrayMap2D;
+
+// ----------------------------------------------------------------------------
 
 class uArrayMap2DAxisIterator
 {
@@ -32,6 +35,8 @@ bool operator!=(const uArrayMap2DAxisIterator& a, const uArrayMap2DAxisIterator&
 
 static_assert(std::input_or_output_iterator<uArrayMap2DAxisIterator>);
 
+// ----------------------------------------------------------------------------
+
 class uArrayMap2DAxis
 {
 public:
@@ -45,6 +50,8 @@ private:
 };
 
 static_assert(std::ranges::input_range<uArrayMap2DAxis>);
+
+// ----------------------------------------------------------------------------
 
 class uArrayMap2DGridIterator
 {
@@ -81,6 +88,8 @@ bool operator!=(const uArrayMap2DGridIterator& a, const uArrayMap2DGridIterator&
 
 static_assert(std::input_or_output_iterator<uArrayMap2DGridIterator>);
 
+// ----------------------------------------------------------------------------
+
 class uArrayMap2DGrid
 {
 public:
@@ -94,6 +103,21 @@ private:
 
 static_assert(std::ranges::input_range<uArrayMap2DGrid>);
 
+// ----------------------------------------------------------------------------
+
+class uArrayMap2DAllocator
+{
+public:
+	virtual ~uArrayMap2DAllocator();
+	virtual char* Allocate(size_t memSize) = 0;
+	virtual void Free(char* ptr) = 0;
+};
+
+std::shared_ptr<uArrayMap2DAllocator> CreateArrayMap2DAllocator_MemAlloc();
+std::shared_ptr<uArrayMap2DAllocator> CreateArrayMap2DAllocator_Heap();
+
+// ----------------------------------------------------------------------------
+
 enum class uArrayMap2DOptions
 {
 	CloneAsNull,
@@ -106,6 +130,7 @@ class uArrayMap2D
 public:
 
 	uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char invalid);
+	uArrayMap2D(const std::shared_ptr<uArrayMap2DAllocator>& allocator, Vec2Int origin, int32_t width, int32_t height, char invalid);
 	uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char* data, char invalid);
 	uArrayMap2D(const uArrayMap2D& other);
 	uArrayMap2D(uArrayMap2DOptions options, const uArrayMap2D& other);
@@ -148,6 +173,8 @@ private:
 
 	int32_t GetDataSize() const;
 
+	std::shared_ptr<uArrayMap2DAllocator> m_allocator;
+
 	Vec2Int m_origin;
 	int32_t m_width;
 	int32_t m_height;
@@ -155,5 +182,7 @@ private:
 	char* m_pStorage;
 	char m_invalid;
 };
+
+// ----------------------------------------------------------------------------
 
 uArrayMap2D ReaduArrayMap(char emptyChar = '.');

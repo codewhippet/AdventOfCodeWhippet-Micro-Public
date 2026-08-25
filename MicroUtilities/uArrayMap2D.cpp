@@ -1,14 +1,33 @@
 #include "stdafx.h"
 #include <assert.h>
 
+// ----------------------------------------------------------------------------
+
 uArrayMap2D::uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char invalid)
 {
+	m_allocator = CreateArrayMap2DAllocator_MemAlloc();
+
 	m_origin = origin;
 	m_width = width;
 	m_height = height;
 
 	int32_t dataSize = GetDataSize();
-	m_pStorage = static_cast<char*>(MemArena_Alloc(dataSize));
+	m_pStorage = m_allocator->Allocate(dataSize);
+	memset(m_pStorage, invalid, dataSize);
+
+	m_invalid = invalid;
+}
+
+uArrayMap2D::uArrayMap2D(const std::shared_ptr<uArrayMap2DAllocator>& allocator, Vec2Int origin, int32_t width, int32_t height, char invalid)
+{
+	m_allocator = allocator;
+
+	m_origin = origin;
+	m_width = width;
+	m_height = height;
+
+	int32_t dataSize = GetDataSize();
+	m_pStorage = m_allocator->Allocate(dataSize);
 	memset(m_pStorage, invalid, dataSize);
 
 	m_invalid = invalid;
@@ -16,6 +35,8 @@ uArrayMap2D::uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char inv
 
 uArrayMap2D::uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char* data, char invalid)
 {
+	m_allocator = CreateArrayMap2DAllocator_MemAlloc();
+
 	m_origin = origin;
 	m_width = width;
 	m_height = height;
@@ -27,12 +48,14 @@ uArrayMap2D::uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char* da
 
 uArrayMap2D::uArrayMap2D(const uArrayMap2D& other)
 {
+	m_allocator = other.m_allocator;
+
 	m_origin = other.m_origin;
 	m_width = other.m_width;
 	m_height = other.m_height;
 
 	int32_t dataSize = GetDataSize();
-	m_pStorage = static_cast<char*>(MemArena_Alloc(dataSize));
+	m_pStorage = m_allocator->Allocate(dataSize);
 	memcpy(m_pStorage, other.m_pStorage, dataSize);
 
 	m_invalid = other.m_invalid;
@@ -40,6 +63,8 @@ uArrayMap2D::uArrayMap2D(const uArrayMap2D& other)
 
 uArrayMap2D::uArrayMap2D(uArrayMap2D&& other) noexcept
 {
+	m_allocator = std::move(other.m_allocator);
+
 	m_origin = other.m_origin;
 	m_width = other.m_width;
 	m_height = other.m_height;
@@ -57,7 +82,7 @@ uArrayMap2D::uArrayMap2D(uArrayMap2DOptions options, const uArrayMap2D& other)
 	m_height = other.m_height;
 
 	int32_t dataSize = GetDataSize();
-	m_pStorage = static_cast<char*>(MemArena_Alloc(dataSize));
+	m_pStorage = m_allocator->Allocate(dataSize);
 	m_invalid = other.m_invalid;
 
 	switch (options)
@@ -76,12 +101,15 @@ uArrayMap2D::uArrayMap2D(uArrayMap2DOptions options, const uArrayMap2D& other)
 
 uArrayMap2D::~uArrayMap2D()
 {
-	MemArena_Free(m_pStorage);
+	if (m_allocator)
+	{
+		m_allocator->Free(m_pStorage);
+	}
 }
 
 uArrayMap2D& uArrayMap2D::operator=(uArrayMap2D&& other) noexcept
 {
-	MemArena_Free(m_pStorage);
+	m_allocator->Free(m_pStorage);
 
 	m_origin = other.m_origin;
 	m_width = other.m_width;
@@ -97,14 +125,14 @@ uArrayMap2D& uArrayMap2D::operator=(uArrayMap2D&& other) noexcept
 
 uArrayMap2D& uArrayMap2D::operator=(const uArrayMap2D& other)
 {
-	MemArena_Free(m_pStorage);
+	m_allocator->Free(m_pStorage);
 
 	m_origin = other.m_origin;
 	m_width = other.m_width;
 	m_height = other.m_height;
 
 	int32_t dataSize = GetDataSize();
-	m_pStorage = static_cast<char*>(MemArena_Alloc(dataSize));
+	m_pStorage = m_allocator->Allocate(dataSize);
 	memcpy(m_pStorage, other.m_pStorage, dataSize);
 
 	m_invalid = other.m_invalid;
@@ -280,6 +308,8 @@ int32_t uArrayMap2D::GetDataSize() const
 	return m_width * m_height;
 }
 
+// ----------------------------------------------------------------------------
+
 uArrayMap2DAxisIterator::uArrayMap2DAxisIterator()
 	: m_current(-1)
 {
@@ -331,6 +361,8 @@ bool operator!=(const uArrayMap2DAxisIterator& a, const uArrayMap2DAxisIterator&
 	return !(a == b);
 }
 
+// ----------------------------------------------------------------------------
+
 uArrayMap2DAxis::uArrayMap2DAxis(int32_t begin, int32_t end)
 	: m_begin(begin)
 	, m_end(end)
@@ -347,20 +379,7 @@ uArrayMap2DAxisIterator uArrayMap2DAxis::end() const
 	return uArrayMap2DAxisIterator{ m_end };
 }
 
-Vec2Int ReadArrayMapDimensions()
-{
-	Vec2Int size;
-	while (PuzzleInput::NextLine())
-	{
-		size.Y++;
-		while (PuzzleInput::GetChar() != '\n')
-		{
-			size.X++;
-		}
-	}
-
-	return size;
-}
+// ----------------------------------------------------------------------------
 
 uArrayMap2D ReaduArrayMap(char emptyChar)
 {
@@ -386,6 +405,8 @@ uArrayMap2D ReaduArrayMap(char emptyChar)
 
 	return uArrayMap2D(Vec2Int{ 0, 0 }, dimensions.X, dimensions.Y, mapData, emptyChar);
 }
+
+// ----------------------------------------------------------------------------
 
 uArrayMap2DGridIterator::uArrayMap2DGridIterator()
 	: m_arrayMap(nullptr)
@@ -465,6 +486,8 @@ bool operator!=(const uArrayMap2DGridIterator& a, const uArrayMap2DGridIterator&
 	return !(a == b);
 }
 
+// ----------------------------------------------------------------------------
+
 uArrayMap2DGrid::uArrayMap2DGrid(const uArrayMap2D* arrayMap)
 	: m_map(arrayMap)
 {
@@ -478,4 +501,56 @@ uArrayMap2DGridIterator uArrayMap2DGrid::begin() const
 uArrayMap2DGridIterator uArrayMap2DGrid::end() const
 {
 	return uArrayMap2DGridIterator();
+}
+
+// ----------------------------------------------------------------------------
+
+uArrayMap2DAllocator::~uArrayMap2DAllocator()
+{
+}
+
+// ----------------------------------------------------------------------------
+
+class uArrayMap2DAllocator_MemAlloc : public uArrayMap2DAllocator
+{
+public:
+	~uArrayMap2DAllocator_MemAlloc() = default;
+
+	char* Allocate(size_t memSize) override
+	{
+		return static_cast<char*>(MemArena_Alloc(memSize));
+	}
+
+	void Free(char* ptr) override
+	{
+		MemArena_Free(ptr);
+	}
+};
+
+std::shared_ptr<uArrayMap2DAllocator> CreateArrayMap2DAllocator_MemAlloc()
+{
+	return std::make_shared<uArrayMap2DAllocator_MemAlloc>();
+}
+
+// ----------------------------------------------------------------------------
+
+class uArrayMap2DAllocator_Heap : public uArrayMap2DAllocator
+{
+public:
+	~uArrayMap2DAllocator_Heap() = default;
+
+	char* Allocate(size_t memSize) override
+	{
+		return static_cast<char*>(malloc(memSize));
+	}
+
+	void Free(char* ptr) override
+	{
+		free(ptr);
+	}
+};
+
+std::shared_ptr<uArrayMap2DAllocator> CreateArrayMap2DAllocator_Heap()
+{
+	return std::make_shared<uArrayMap2DAllocator_Heap>();
 }
