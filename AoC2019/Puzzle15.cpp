@@ -3,56 +3,59 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle15_2019_Types
 {
 	struct SearchNode
 	{
-		pair<Point2, int64_t> Movement;
-		int64_t Steps;
-		int64_t From;
+		Vec2Int Position;
+		int32_t Movement;
+		int32_t Steps;
+		int32_t From;
 	};
 }
 
 using namespace Puzzle15_2019_Types;
 
-static vector<pair<Point2, int64_t>> FindNearest(map<Point2, char>& maze, const Point2& start, char target)
+static vector<int32_t> FindNearest(const uArrayMap2D& maze, const Vec2Int& start, char target)
 {
-	static const vector<pair<Point2, int64_t>> directions =
+	const array<pair<Vec2Int, int32_t>, 4> directions =
 	{
-		{ Point2::North(), 1 },
-		{ Point2::South(), 2 },
-		{ Point2::West(), 3 },
-		{ Point2::East(), 4 },
+		pair<Vec2Int, int32_t>{ Vec2Int::North(), 1 },
+		pair<Vec2Int, int32_t>{ Vec2Int::South(), 2 },
+		pair<Vec2Int, int32_t>{ Vec2Int::West(), 3 },
+		pair<Vec2Int, int32_t>{ Vec2Int::East(), 4 },
 	};
 
-	vector<SearchNode> searchQueue{ { { start, 0 }, -1 } };
-	set<Point2> visited;
-	for (int64_t searchIndex = 0; searchIndex < (int64_t)searchQueue.size(); searchIndex++)
+	vector<SearchNode> searchQueue;
+	searchQueue.reserve(512);
+	searchQueue.push_back({ start, -1, 0, -1 });
+
+	uArrayMap2D queued(maze);
+	queued(start) = '#';
+
+	for (int32_t searchIndex = 0; searchIndex < (int32_t)searchQueue.size(); searchIndex++)
 	{
 		SearchNode current = searchQueue[searchIndex];
-		if (maze[current.Movement.first] == target)
+		if (maze(current.Position) == target)
 		{
-			vector<pair<Point2, int64_t>> reconstructedPath;
+			vector<int32_t> reconstructedPath;
+			reconstructedPath.reserve(current.Steps);
 			for (int64_t node = searchIndex; node != 0; node = searchQueue[node].From)
 			{
 				reconstructedPath.push_back(searchQueue[node].Movement);
 			}
 			ranges::reverse(reconstructedPath);
+			assert(reconstructedPath.capacity() <= current.Steps);
 			return reconstructedPath;
 		}
 
-		if (visited.insert(current.Movement.first).second == false)
-			continue;
-
 		for (const auto& dir : directions)
 		{
-			Point2 nextPos = current.Movement.first + dir.first;
-			if (maze[nextPos] != '#')
+			Vec2Int nextPos = current.Position + dir.first;
+			if (maze(nextPos) != '#' && queued(nextPos) != '#')
 			{
-				searchQueue.push_back({ { nextPos, dir.second }, current.Steps + 1, searchIndex });
+				searchQueue.push_back({ nextPos, dir.second, current.Steps + 1, searchIndex });
+				queued(nextPos) = '#';
 			}
 		}
 	}
@@ -60,123 +63,126 @@ static vector<pair<Point2, int64_t>> FindNearest(map<Point2, char>& maze, const 
 	return {};
 }
 
-static map<Point2, char> ExploreMaze(istream &input)
+static Vec2Int ExploreMaze(uArrayMap2D* maze)
 {
-	Intputer puter(input);
+	uIntputer<int32_t> puter(1024 + 512);
 
-	deque<int64_t> in;
-	deque<int64_t> out;
+	deque<int32_t> in;
+	deque<int32_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
-	map<Point2, char> maze{ { {}, '.'} };
-	Point2 droidPos;
-	Point2 oxygenSystem;
+	const array<Vec2Int, 5> directionCodes =
+	{
+		Vec2Int{},
+		Vec2Int::North(),
+		Vec2Int::South(),
+		Vec2Int::West(),
+		Vec2Int::East(),
+	};
+
+	(*maze)({}) = '.';
+
+	Vec2Int oxygenBottle;
+
+	Vec2Int droidPos;
 	while (true)
 	{
-		vector<pair<Point2, int64_t>> movements = FindNearest(maze, droidPos, '\0');
+		vector<int32_t> movements = FindNearest(*maze, droidPos, '?');
 		if (movements.empty())
 			break;
 
 		ranges::for_each(movements | views::take(movements.size() - 1),
-			[&](const auto& move)
+			[&](int32_t move)
 			{
-				in.push_back(move.second);
+				in.push_back(move);
 				auto exec = puter.Execute();
 				(void)exec;
-				assert(exec == Intputer::ExecutionResult::PendingIo);
+				assert(exec == uIntputerExecutionResult::PendingIo);
 				assert(out.size() == 1);
 				assert(out[0] == 1);
 				out.clear();
 
-				droidPos = move.first;
+				droidPos = droidPos + directionCodes[move];
 			});
 
-		in.push_back(movements.back().second);
+		in.push_back(movements.back());
 		auto exec = puter.Execute();
-		assert(exec == Intputer::ExecutionResult::PendingIo);
+		assert(exec == uIntputerExecutionResult::PendingIo);
 		(void)exec;
 		assert(out.size() == 1);
+
+		Vec2Int expectedNextDroidPos = droidPos + directionCodes[movements.back()];
 		switch (out[0])
 		{
 		case 0:
-			maze[movements.back().first] = '#';
+			(*maze)(expectedNextDroidPos) = '#';
 			break;
 		case 1:
-			maze[movements.back().first] = '.';
-			droidPos = movements.back().first;
+			(*maze)(expectedNextDroidPos) = '.';
+			droidPos = expectedNextDroidPos;
 			break;
 		case 2:
-			maze[movements.back().first] = 'O';
-			droidPos = movements.back().first;
+			(*maze)(expectedNextDroidPos) = 'O';
+			droidPos = expectedNextDroidPos;
+			oxygenBottle = droidPos;
 			break;
 		}
 		out.clear();
 	}
 
-	return maze;
+	return oxygenBottle;
 }
 
-static int64_t TimeToFill(map<Point2, char>& maze, const Point2& start)
+static int32_t TimeToFill(const uArrayMap2D& maze, const Vec2Int& start)
 {
-	vector<pair<Point2, int64_t>> searchQueue{ { start, 0 } };
-	set<Point2> queued{ start };
-	for (size_t i = 0; i < searchQueue.size(); i++)
+	vector<SearchNode> searchQueue;
+	searchQueue.reserve(512);
+	searchQueue.push_back({ start, -1, 0, -1 });
+
+	uArrayMap2D queued(maze);
+	queued(start) = '#';
+
+	for (size_t searchIndex = 0; searchIndex < searchQueue.size(); searchIndex++)
 	{
-		auto [currentPos, currentSteps] = searchQueue[i];
-		for (const Point2& dir : Point2::CardinalDirections())
+		SearchNode current = searchQueue[searchIndex];
+		for (const auto& dir : Vec2Int::CardinalDirections())
 		{
-			Point2 nextPos = currentPos + dir;
-			if ((maze.at(nextPos) != '#') && (queued.contains(nextPos) == false))
+			Vec2Int nextPos = current.Position + dir;
+			if (maze(nextPos) != '#' && queued(nextPos) != '#')
 			{
-				searchQueue.push_back({ nextPos, currentSteps + 1 });
-				queued.insert(nextPos);
+				searchQueue.push_back(SearchNode{ nextPos, -1, current.Steps + 1 });
+				queued(nextPos) = '#';
 			}
 		}
 	}
-	return searchQueue.back().second;
-}
 
-static void Puzzle15_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<Point2, char> maze = ExploreMaze(input);
-
-	auto shortestRoute = FindNearest(maze, {}, 'O');
-	int64_t answer = shortestRoute.size();
-
-	printf("[2019] Puzzle15_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle15_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<Point2, char> maze = ExploreMaze(input);
-
-	Point2 oxygenBottle = ranges::find_if(maze, [](const auto& p) { return p.second == 'O'; })->first;
-	int64_t answer = TimeToFill(maze, oxygenBottle);
-
-	printf("[2019] Puzzle15_B: %" PRId64 "\n", answer);
+	return searchQueue.back().Steps;
 }
 
 void Puzzle15_A_2019()
 {
-	Puzzle15_A(R"(z:\AoCInput\2019\Puzzle15.txt)");
+	const int32_t mazeWidth = 64;
+	const int32_t mazeHeight = 64;
 
-	int32_t answer = 0;
+	uArrayMap2D maze(CreateArrayMap2DAllocator_Heap(), Vec2Int{ -32, -32 }, mazeWidth, mazeHeight, '?');
+
+	ExploreMaze(&maze);
+
+	auto shortestRoute = FindNearest(maze, {}, 'O');
+	int32_t answer = static_cast<int32_t>(shortestRoute.size());
+
 	PuzzleOutput::Submit(2019, 15, 1, answer);
 }
 
 void Puzzle15_B_2019()
 {
-	Puzzle15_B(R"(z:\AoCInput\2019\Puzzle15.txt)");
+	const int32_t mazeWidth = 64;
+	const int32_t mazeHeight = 64;
 
-	int32_t answer = 0;
+	uArrayMap2D maze(CreateArrayMap2DAllocator_Heap(), Vec2Int{ -32, -32 }, mazeWidth, mazeHeight, '?');
+
+	Vec2Int oxygenBottle = ExploreMaze(&maze);
+	int32_t answer = TimeToFill(maze, oxygenBottle);
+
 	PuzzleOutput::Submit(2019, 15, 2, answer);
 }
