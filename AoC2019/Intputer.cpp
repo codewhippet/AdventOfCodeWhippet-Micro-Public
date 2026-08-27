@@ -365,8 +365,6 @@ void uIntputer<REGISTER_TYPE>::WriteParam(REGISTER_TYPE parameter, ParameterMode
 		Program[parameter + RB] = value;
 		break;
 	}
-
-
 }
 
 template<typename REGISTER_TYPE>
