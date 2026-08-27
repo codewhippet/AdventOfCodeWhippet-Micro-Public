@@ -3,74 +3,94 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle17_2019_Types
 {
 }
 
 using namespace Puzzle17_2019_Types;
 
-static ArrayMap2D ExtractMap(const vector<int64_t>& program)
+static uArrayMap2D ExtractMap(const vector<int32_t>& program)
 {
-	Intputer puter;
+	uArrayMap2D pipes(CreateArrayMap2DAllocator_Heap(), {}, 64, 32, '.');
+
+	assert(program.size() == 3050);
+
+	uIntputer<int32_t> puter;
 	puter.CopyProgram(program);
 
-	deque<int64_t> in;
-	deque<int64_t> out;
+	deque<int32_t> in;
+	deque<int32_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
 	puter.Execute();
 
-	string startingMapEncoded;
-	ranges::copy(out | views::transform([](int64_t c) { return (char)c; }), back_inserter(startingMapEncoded));
+	Vec2Int rasterPos{};
+	for (int32_t c : out)
+	{
+		if (c == '\n')
+		{
+			rasterPos.X = 0;
+			rasterPos.Y++;
+		}
+		else
+		{
+			pipes(rasterPos) = static_cast<char>(c);
+			rasterPos.X++;
+		}
+	}
 
-	istringstream pipeInput(startingMapEncoded);
-	return ReadArrayMap(pipeInput);
+	return pipes;
 }
 
-static string FindFullPath(const ArrayMap2D& pipes)
+static string FindFullPath(const uArrayMap2D& pipes)
 {
 	// Find the robot
-	const map<char, Point2> directions
-	{
-		{ '^', Point2::Up() },
-		{ 'v', Point2::Down() },
-		{ '<', Point2::Left() },
-		{ '>', Point2::Right() },
-	};
-
-	Point2 robotPos;
-	Point2 robotDir;
+	Vec2Int robotPos;
+	Vec2Int robotDir;
 	for (const auto& p : pipes.Grid())
 	{
-		if (directions.contains(p.second))
+		switch (p.second)
 		{
+		case '^':
 			robotPos = p.first;
-			robotDir = directions.at(p.second);
+			robotDir = Vec2Int::Up();
+			break;
+		case 'v':
+			robotPos = p.first;
+			robotDir = Vec2Int::Down();
+			break;
+		case '<':
+			robotPos = p.first;
+			robotDir = Vec2Int::Left();
+			break;
+		case '>':
+			robotPos = p.first;
+			robotDir = Vec2Int::Right();
 			break;
 		}
+
+		if (robotDir != Vec2Int{})
+			break;
 	}
 
 	// Orient the robot (note: a choice between double LL or double RR would
 	// knacker up simple block search strategies, so I assume the puzzles
 	// don't do that)
 	auto checkAhead = [&]() { return pipes(robotPos + robotDir) == '#'; };
-	auto checkLeft = [&]() { return pipes(robotPos + Point2::RotateAnticlockwise(robotDir)) == '#'; };
-	auto checkRight = [&]() { return pipes(robotPos + Point2::RotateClockwise(robotDir)) == '#'; };
+	auto checkLeft = [&]() { return pipes(robotPos + Vec2Int::RotateAnticlockwise(robotDir)) == '#'; };
+	auto checkRight = [&]() { return pipes(robotPos + Vec2Int::RotateClockwise(robotDir)) == '#'; };
 	assert(checkAhead() || checkLeft() || checkRight());
 
 	string path;
 	if (checkLeft())
 	{
 		path += 'L';
-		robotDir = Point2::RotateAnticlockwise(robotDir);
+		robotDir = Vec2Int::RotateAnticlockwise(robotDir);
 	}
 	else if (checkRight())
 	{
 		path += 'R';
-		robotDir = Point2::RotateClockwise(robotDir);
+		robotDir = Vec2Int::RotateClockwise(robotDir);
 	}
 
 	while (true)
@@ -88,12 +108,12 @@ static string FindFullPath(const ArrayMap2D& pipes)
 		if (checkLeft())
 		{
 			path += 'L';
-			robotDir = Point2::RotateAnticlockwise(robotDir);
+			robotDir = Vec2Int::RotateAnticlockwise(robotDir);
 		}
 		else if (checkRight())
 		{
 			path += 'R';
-			robotDir = Point2::RotateClockwise(robotDir);
+			robotDir = Vec2Int::RotateClockwise(robotDir);
 		}
 		else
 		{
@@ -126,9 +146,9 @@ static vector<string> RemoveParticle(const vector<string>& particles, const stri
 	return updatedParticles;
 }
 
-static int64_t EncodedLength(const string& particle)
+static int32_t EncodedLength(const string& particle)
 {
-	int64_t encodedLength = particle.size();
+	int32_t encodedLength = static_cast<int32_t>(particle.size());
 	for (size_t i = 0; (i + 1) < particle.size(); i++)
 	{
 		encodedLength += isdigit(particle[i]) != isdigit(particle[i + 1]);
@@ -180,19 +200,22 @@ static bool Solve(const vector<string>& particles, int depth, vector<string> *an
 	return false;
 }
 
-static void Puzzle17_A(const string &filename)
+void Puzzle17_A_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<int32_t> program;
+	while (PuzzleInput::PeekChar() != '\n')
+	{
+		program.push_back(Parse::GetInt32());
+	}
+	program.resize(3050);
 
-	ArrayMap2D pipes = ExtractMap(ReadAsVectorOfNumbers(ReadSingleLine(input)));
+	uArrayMap2D pipes = ExtractMap(program);
 
-	int64_t answer = 0;
+	int32_t answer = 0;
 	for (const auto& p : pipes.Grid() | views::filter([](const auto& p) { return p.second == '#'; }))
 	{
-		auto surroundingPipes = Point2::CardinalDirections()
-			| views::transform([&](const Point2& dir)
+		auto surroundingPipes = Vec2Int::CardinalDirections()
+			| views::transform([&](const Vec2Int& dir)
 				{
 					return pipes(p.first + dir);
 				});
@@ -202,18 +225,19 @@ static void Puzzle17_A(const string &filename)
 		}
 	}
 
-	printf("[2019] Puzzle17_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2019, 17, 1, answer);
 }
 
-
-static void Puzzle17_B(const string& filename)
+void Puzzle17_B_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<int32_t> program;
+	while (PuzzleInput::PeekChar() != '\n')
+	{
+		program.push_back(Parse::GetInt32());
+	}
+	program.resize(3050);
 
-	vector<int64_t> program = ReadAsVectorOfNumbers(ReadSingleLine(input));
-	ArrayMap2D pipes = ExtractMap(program);
+	uArrayMap2D pipes = ExtractMap(program);
 	string path = FindFullPath(pipes);
 
 	vector<string> movementPieces;
@@ -234,12 +258,12 @@ static void Puzzle17_B(const string& filename)
 		}
 	}
 
-	Intputer puter;
+	uIntputer<int32_t> puter;
 	program[0] = 2;
 	puter.CopyProgram(program);
 
-	deque<int64_t> in;
-	deque<int64_t> out;
+	deque<int32_t> in;
+	deque<int32_t> out;
 	puter.SetReadWriteQueues(&in, &out);
 
 	for (size_t functionCall : movementSchedule)
@@ -263,27 +287,11 @@ static void Puzzle17_B(const string& filename)
 
 	auto exec = puter.Execute();
 
-	assert(exec == Intputer::ExecutionResult::Finished);
+	assert(exec == uIntputerExecutionResult::Finished);
 	(void)exec;
 	assert(out.empty() == false);
 
-	int64_t answer = out.back();
+	int32_t answer = out.back();
 
-	printf("[2019] Puzzle17_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle17_A_2019()
-{
-	Puzzle17_A(R"(z:\AoCInput\2019\Puzzle17.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 17, 1, answer);
-}
-
-void Puzzle17_B_2019()
-{
-	Puzzle17_B(R"(z:\AoCInput\2019\Puzzle17.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2019, 17, 2, answer);
 }
