@@ -15,7 +15,7 @@ static int32_t FuelRequired(int32_t mass)
 
 static int32_t FuelRequiredNonZero(int32_t mass)
 {
-	return max(FuelRequired(mass), 0);
+	return max<int32_t>(FuelRequired(mass), 0);
 }
 
 static int32_t FuelForMassAndFuel(int32_t mass)

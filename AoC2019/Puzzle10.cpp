@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include <numbers>
+#include <math.h>
 
 using namespace std;
 
