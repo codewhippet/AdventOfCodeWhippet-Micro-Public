@@ -3,6 +3,7 @@
 #include <array>
 #include <stdint.h>
 #include <stddef.h>
+#include <assert.h>
 
 template <typename TYPE, size_t SIZE>
 class SmallVector;
@@ -74,17 +75,20 @@ public:
 
 	reference PushBack(const TYPE& value)
 	{
+		assert(Size <= SIZE);
 		Data[Size] = value;
 		return Data[Size++];
 	}
 
 	reference operator[](size_t index)
 	{
+		assert(index < Size);
 		return Data[index];
 	}
 
 	const_reference operator[](size_t index) const
 	{
+		assert(index < Size);
 		return Data[index];
 	}
 
