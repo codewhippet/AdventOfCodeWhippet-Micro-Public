@@ -10,6 +10,8 @@ namespace Puzzle18_2019_Types
 	template <int32_t K>
 	struct Combinatorials
 	{
+		Combinatorials() = default;
+
 		Combinatorials(int32_t N)
 			: NChooseK(N + 1, { 1 })
 		{
@@ -65,6 +67,8 @@ namespace Puzzle18_2019_Types
 		uvector<array<int32_t, K + 1>> NChooseK;
 	};
 
+// ----------------------------------------------------------------------------
+
 	template <typename TYPE>
 	class FromTo
 	{
@@ -107,6 +111,8 @@ namespace Puzzle18_2019_Types
 		TYPE* Data = nullptr;
 	};
 
+// ----------------------------------------------------------------------------
+
 	struct Edge
 	{
 		int32_t Length;
@@ -129,41 +135,89 @@ namespace Puzzle18_2019_Types
 		uint32_t Requires;
 	};
 
-	struct UncompressedState
+// ----------------------------------------------------------------------------
+
+	struct UncompressedState_Single
+	{
+		int32_t RobotLocation;
+		uint32_t KeysCollected;
+	};
+
+	struct CompressedState_Single
+	{
+		int16_t RobotLocation;
+		uint16_t KeysCollectedLo;
+		uint16_t KeysCollectedHi;
+		auto operator<=>(const CompressedState_Single&) const = default;
+	};
+
+	struct CompressedSearchNode_Single
+	{
+		int16_t Priority;
+		CompressedState_Single State;
+		auto operator<=>(const CompressedSearchNode_Single&) const = default;
+	};
+
+	struct Neighbour_Single
+	{
+		int32_t Distance;
+		UncompressedState_Single State;
+	};
+
+// ----------------------------------------------------------------------------
+
+	struct UncompressedState_Multi
 	{
 		array<int32_t, 4> RobotLocations;
 		uint32_t KeysCollected;
 	};
 
-	struct CompressedState
+	struct CompressedState_Multi
 	{
 		int16_t RobotLocationsCns;
 		uint16_t KeysCollectedLo;
 		uint16_t KeysCollectedHi;
-		auto operator<=>(const CompressedState&) const = default;
+		auto operator<=>(const CompressedState_Multi&) const = default;
 	};
 
-	struct CompressedSearchNode
+	struct CompressedSearchNode_Multi
 	{
 		int16_t Priority;
-		CompressedState State;
-		auto operator<=>(const CompressedSearchNode&) const = default;
+		CompressedState_Multi State;
+		auto operator<=>(const CompressedSearchNode_Multi&) const = default;
 	};
 
-	struct Neighbour
+	struct Neighbour_Multi
 	{
 		int32_t Distance;
-		UncompressedState State;
-		auto operator<=>(const Neighbour&) const = default;
+		UncompressedState_Multi State;
 	};
 }
 
 using namespace Puzzle18_2019_Types;
 
 template <>
-struct std::hash<CompressedState>
+struct std::hash<CompressedState_Single>
 {
-	size_t operator()(const CompressedState& m) const noexcept
+	size_t operator()(const CompressedState_Single& m) const noexcept
+	{
+		uint32_t hash = 0x811c9dc5;
+
+		hash ^= m.RobotLocation;
+		hash *= 0x01000193;
+		hash ^= m.KeysCollectedLo;
+		hash *= 0x01000193;
+		hash ^= m.KeysCollectedHi;
+		hash *= 0x01000193;
+
+		return hash;
+	}
+};
+
+template <>
+struct std::hash<CompressedState_Multi>
+{
+	size_t operator()(const CompressedState_Multi& m) const noexcept
 	{
 		uint32_t hash = 0x811c9dc5;
 
@@ -180,18 +234,33 @@ struct std::hash<CompressedState>
 
 // ----------------------------------------------------------------------------
 
-static void CompressState(const Puzzle& puzzle, const UncompressedState& src, CompressedState* dst)
+static void CompressState(const UncompressedState_Single& src, CompressedState_Single* dst)
+{
+	dst->RobotLocation = static_cast<int16_t>(src.RobotLocation);
+	dst->KeysCollectedLo = static_cast<uint16_t>(src.KeysCollected & 0xffff);
+	dst->KeysCollectedHi = static_cast<uint16_t>((src.KeysCollected >> 16) & 0xffff);
+}
+
+static void UncompressState(const CompressedState_Single& src, UncompressedState_Single* dst)
+{
+	dst->RobotLocation = src.RobotLocation;
+	dst->KeysCollected = (static_cast<uint32_t>(src.KeysCollectedHi << 16)) | (src.KeysCollectedLo);
+}
+
+static void CompressState(const Puzzle& puzzle, const UncompressedState_Multi& src, CompressedState_Multi* dst)
 {
 	dst->RobotLocationsCns = puzzle.Comb.ToCns(src.RobotLocations);
 	dst->KeysCollectedLo = static_cast<uint16_t>(src.KeysCollected & 0xffff);
 	dst->KeysCollectedHi = static_cast<uint16_t>((src.KeysCollected >> 16) & 0xffff);
 }
 
-static void UncompressState(const Puzzle& puzzle, const CompressedState& src, UncompressedState* dst)
+static void UncompressState(const Puzzle& puzzle, const CompressedState_Multi& src, UncompressedState_Multi* dst)
 {
 	puzzle.Comb.FromCns(src.RobotLocationsCns, &dst->RobotLocations);
 	dst->KeysCollected = (static_cast<uint32_t>(src.KeysCollectedHi << 16)) | (src.KeysCollectedLo);
 }
+
+// ----------------------------------------------------------------------------
 
 template <typename KEY_TYPE, typename MAPPED_TYPE>
 class HashMap18
@@ -339,7 +408,7 @@ static void GenerateEdges(const uArrayMap2D& maze, int32_t fromId, Vec2Int start
 
 static void GenerateAllEdges(const uArrayMap2D& maze, Puzzle* p)
 {
-	for (int32_t i = 0; i < 30; i++)
+	for (int32_t i = 0; i < static_cast<int32_t>(p->SpecialLocations.size()); i++)
 	{
 		GenerateEdges(maze, i, p->SpecialLocations[i], &p->KeyToKeyEdges);
 	}
@@ -366,7 +435,7 @@ static void GenerateShortestPaths(int32_t from, Puzzle* p)
 		};
 
 	uvector<int32_t> visited;
-	visited.resize(30);
+	visited.resize(p->SpecialLocations.size());
 
 	while (priorityQueue.empty() == false)
 	{
@@ -378,7 +447,7 @@ static void GenerateShortestPaths(int32_t from, Puzzle* p)
 		visited[current.second] = 1;
 
 		const Edge* neighbours = p->KeyToKeyEdges.GetRow(current.second);
-		for (int32_t i = 0; i < 30; i++)
+		for (int32_t i = 0; i < static_cast<int32_t>(p->SpecialLocations.size()); i++)
 		{
 			if (neighbours[i].Length == -1)
 				continue;
@@ -393,13 +462,36 @@ static void GenerateShortestPaths(int32_t from, Puzzle* p)
 
 static void GenerateAllShortestPaths(Puzzle* p)
 {
-	for (int32_t from = 0; from < 30; from++)
+	for (int32_t from = 0; from < static_cast<int32_t>(p->SpecialLocations.size()); from++)
 	{
 		GenerateShortestPaths(from, p);
 	}
 }
 
-static void ParsePuzzleNew(Puzzle* puzzle)
+static void ParsePuzzlePart1(Puzzle* puzzle)
+{
+	uArrayMap2D maze = ReaduArrayMap('.');
+	for (const auto& p : maze.Grid())
+	{
+		if (p.second == '@')
+		{
+			puzzle->Start = p.first;
+		}
+		else if (isalpha(p.second) && islower(p.second))
+		{
+			int32_t doorId = p.second - 'a';
+			puzzle->SpecialLocations[doorId] = p.first;
+			maze(p.first) = static_cast<char>(doorId);
+		}
+	}
+
+	puzzle->SpecialLocations[26] = puzzle->Start;
+
+	GenerateAllEdges(maze, puzzle);
+	GenerateAllShortestPaths(puzzle);
+}
+
+static void ParsePuzzlePart2(Puzzle* puzzle)
 {
 	uArrayMap2D maze = ReaduArrayMap('.');
 	for (const auto& p : maze.Grid())
@@ -436,12 +528,56 @@ static void ParsePuzzleNew(Puzzle* puzzle)
 	GenerateAllShortestPaths(puzzle);
 }
 
-static void GetNeighbours(const UncompressedState& from, const Puzzle& puzzle, SmallVector<Neighbour, 16>* neighbours)
+// ----------------------------------------------------------------------------
+
+static void GetNeighbours(const UncompressedState_Single& from, const Puzzle& puzzle, SmallVector<Neighbour_Single, 16>* neighbours)
+{
+	const Edge* edges = puzzle.KeyToKeyEdges.GetRow(from.RobotLocation);
+	for (int32_t to = 0; to < static_cast<int32_t>(puzzle.SpecialLocations.size()); to++)
+	{
+		if (edges[to].Length == -1)
+			continue;
+
+		// Check for locked doors
+		if ((edges[to].Requires & from.KeysCollected) != edges[to].Requires)
+			continue;
+
+		Neighbour_Single neighbour;
+		neighbour.Distance = edges[to].Length;
+		neighbour.State = from;
+
+		neighbour.State.RobotLocation = to;
+		neighbour.State.KeysCollected |= 1u << to;
+
+		neighbours->PushBack(neighbour);
+	}
+}
+
+int32_t Heuristic(const UncompressedState_Single& from, const Puzzle& puzzle)
+{
+	int32_t robotMaxDistance = 0;
+
+	uint32_t uncollectedKeys = ~from.KeysCollected;
+	for (int32_t key = 0; key < 26; key++)
+	{
+		if (uncollectedKeys & 1)
+		{
+			robotMaxDistance = max(robotMaxDistance, puzzle.KeyToKeyPaths(from.RobotLocation, key));
+		}
+
+		uncollectedKeys >>= 1;
+	}
+
+	int32_t h = robotMaxDistance;
+	return h;
+}
+
+static void GetNeighbours(const UncompressedState_Multi& from, const Puzzle& puzzle, SmallVector<Neighbour_Multi, 16>* neighbours)
 {
 	for (int32_t i = 0; i < 4; i++)
 	{
 		const Edge* edges = puzzle.KeyToKeyEdges.GetRow(from.RobotLocations[i]);
-		for (int32_t to = 0; to < 30; to++)
+		for (int32_t to = 0; to < static_cast<int32_t>(puzzle.SpecialLocations.size()); to++)
 		{
 			if (edges[to].Length == -1)
 				continue;
@@ -450,7 +586,7 @@ static void GetNeighbours(const UncompressedState& from, const Puzzle& puzzle, S
 			if ((edges[to].Requires & from.KeysCollected) != edges[to].Requires)
 				continue;
 
-			Neighbour neighbour;
+			Neighbour_Multi neighbour;
 			neighbour.Distance = edges[to].Length;
 			neighbour.State = from;
 
@@ -462,7 +598,7 @@ static void GetNeighbours(const UncompressedState& from, const Puzzle& puzzle, S
 	}
 }
 
-int32_t Heuristic(const UncompressedState& from, const Puzzle& puzzle)
+int32_t Heuristic(const UncompressedState_Multi& from, const Puzzle& puzzle)
 {
 	array<int32_t, 4> robotMaxDistances = {};
 
@@ -484,19 +620,87 @@ int32_t Heuristic(const UncompressedState& from, const Puzzle& puzzle)
 	return h;
 }
 
-static int32_t ShortestPathMultibot(const Puzzle& puzzle)
+// ----------------------------------------------------------------------------
+
+static int32_t ShortestPathSingleBot(const Puzzle& puzzle)
 {
 	const uint32_t allKeys = 0x03ffffff;
 
-	const UncompressedState uncompressedStart{ { 26, 27, 28, 29 }, {} };
-	CompressedState compressedStart;
+	const UncompressedState_Single uncompressedStart{ 26, {} };
+	CompressedState_Single compressedStart;
+	CompressState(uncompressedStart, &compressedStart);
+
+	uvector<CompressedSearchNode_Single> priorityQueue;
+	priorityQueue.reserve(2 * 1024);
+	priorityQueue.push_back({ 0, compressedStart });
+
+	MaxValue<size_t> biggestQueue;
+
+	auto enqueue = [&](const CompressedSearchNode_Single& s)
+		{
+			priorityQueue.push_back(s);
+			assert(priorityQueue.size() <= 6 * 1024);
+			ranges::push_heap(priorityQueue);
+
+			biggestQueue.Update(priorityQueue.size());
+		};
+
+	auto dequeue = [&]()
+		{
+			CompressedSearchNode_Single s = priorityQueue[0];
+			ranges::pop_heap(priorityQueue);
+			priorityQueue.pop_back();
+			return s;
+		};
+
+	HashMap18<CompressedState_Single, int16_t> gScore(16 * 1024, { 0 });
+	gScore.Set(compressedStart, 0);
+
+	UncompressedState_Single uncompressedState;
+	while (priorityQueue.empty() == false)
+	{
+		CompressedSearchNode_Single current = dequeue();
+		uint32_t currentKeysCollected = (static_cast<uint32_t>(current.State.KeysCollectedHi << 16)) | (current.State.KeysCollectedLo);
+		if (currentKeysCollected == allKeys)
+		{
+			return -current.Priority;
+		}
+
+		UncompressState(current.State, &uncompressedState);
+
+		SmallVector<Neighbour_Single, 16> neighbours;
+		GetNeighbours(uncompressedState, puzzle, &neighbours);
+		for (const Neighbour_Single& neighbour : neighbours)
+		{
+			CompressedState_Single compressedNeighbour;
+			CompressState(neighbour.State, &compressedNeighbour);
+
+			int32_t tentativeGScore = gScore.At(current.State) + neighbour.Distance;
+			if (gScore.FindOrDefault(compressedNeighbour, numeric_limits<int16_t>::max()) > tentativeGScore)
+			{
+				gScore.Set(compressedNeighbour, static_cast<int16_t>(tentativeGScore));
+				int16_t priority = static_cast<int16_t>(tentativeGScore + Heuristic(neighbour.State, puzzle));
+				enqueue({ -priority, compressedNeighbour });
+			}
+		}
+	}
+
+	return -1;
+}
+
+static int32_t ShortestPathMultiBot(const Puzzle& puzzle)
+{
+	const uint32_t allKeys = 0x03ffffff;
+
+	const UncompressedState_Multi uncompressedStart{ { 26, 27, 28, 29 }, {} };
+	CompressedState_Multi compressedStart;
 	CompressState(puzzle, uncompressedStart, &compressedStart);
 
-	uvector<CompressedSearchNode> priorityQueue;
+	uvector<CompressedSearchNode_Multi> priorityQueue;
 	priorityQueue.reserve(6 * 1024);
 	priorityQueue.push_back({ 0, compressedStart });
 
-	auto enqueue = [&](const CompressedSearchNode& s)
+	auto enqueue = [&](const CompressedSearchNode_Multi& s)
 		{
 			priorityQueue.push_back(s);
 			assert(priorityQueue.size() <= 6 * 1024);
@@ -505,19 +709,19 @@ static int32_t ShortestPathMultibot(const Puzzle& puzzle)
 
 	auto dequeue = [&]()
 		{
-			CompressedSearchNode s = priorityQueue[0];
+			CompressedSearchNode_Multi s = priorityQueue[0];
 			ranges::pop_heap(priorityQueue);
 			priorityQueue.pop_back();
 			return s;
 		};
 
-	HashMap18<CompressedState, int16_t> gScore(16 * 1024, { 0 });
+	HashMap18<CompressedState_Multi, int16_t> gScore(16 * 1024, { 0 });
 	gScore.Set(compressedStart, 0);
 
-	UncompressedState uncompressedState;
+	UncompressedState_Multi uncompressedState;
 	while (priorityQueue.empty() == false)
 	{
-		CompressedSearchNode current = dequeue();
+		CompressedSearchNode_Multi current = dequeue();
 		uint32_t currentKeysCollected = (static_cast<uint32_t>(current.State.KeysCollectedHi << 16)) | (current.State.KeysCollectedLo);
 		if (currentKeysCollected == allKeys)
 		{
@@ -526,11 +730,11 @@ static int32_t ShortestPathMultibot(const Puzzle& puzzle)
 
 		UncompressState(puzzle, current.State, &uncompressedState);
 
-		SmallVector<Neighbour, 16> neighbours;
+		SmallVector<Neighbour_Multi, 16> neighbours;
 		GetNeighbours(uncompressedState, puzzle, &neighbours);
-		for (const Neighbour& neighbour : neighbours)
+		for (const Neighbour_Multi& neighbour : neighbours)
 		{
-			CompressedState compressedNeighbour;
+			CompressedState_Multi compressedNeighbour;
 			CompressState(puzzle, neighbour.State, &compressedNeighbour);
 
 			int32_t tentativeGScore = gScore.At(current.State) + neighbour.Distance;
@@ -546,10 +750,31 @@ static int32_t ShortestPathMultibot(const Puzzle& puzzle)
 	return -1;
 }
 
+// ----------------------------------------------------------------------------
+
 void Puzzle18_A_2019()
 {
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 18, 1, answer);
+	MemArenaConfig cfg;
+	cfg.LargeBlockRegionSize = 200 * 1024;
+	cfg.DebugFlags = MemArenaDebugFlags::PrintOnOutOfMemory | MemArenaDebugFlags::BreakOnOutOfMemory;
+
+	MemArena_Configure(cfg);
+	{
+		uvector<Edge> edgeBuffer(27 * 27, { -1, 0xffffffffu });
+		uvector<int32_t> pathLengthBuffer(27 * 27, 0);
+
+		Puzzle puzzle;
+		puzzle.SpecialLocations.resize(27);
+		puzzle.KeyToKeyEdges = FromTo<Edge>(27, edgeBuffer.data());
+		puzzle.KeyToKeyPaths = FromTo<int32_t>(27, pathLengthBuffer.data());
+
+		ParsePuzzlePart1(&puzzle);
+
+		int32_t answer = ShortestPathSingleBot(puzzle);
+
+		PuzzleOutput::Submit(2019, 18, 1, answer);
+	}
+	MemArena_Reset();
 }
 
 void Puzzle18_B_2019()
@@ -568,9 +793,9 @@ void Puzzle18_B_2019()
 		puzzle.KeyToKeyEdges = FromTo<Edge>(30, edgeBuffer.data());
 		puzzle.KeyToKeyPaths = FromTo<int32_t>(30, pathLengthBuffer.data());
 
-		ParsePuzzleNew(&puzzle);
+		ParsePuzzlePart2(&puzzle);
 
-		int32_t answer = ShortestPathMultibot(puzzle);
+		int32_t answer = ShortestPathMultiBot(puzzle);
 
 		PuzzleOutput::Submit(2019, 18, 2, answer);
 	}
