@@ -204,7 +204,7 @@ public:
 		return def;
 	}
 
-	bool TryFind(const key_type& key, mapped_type* out)
+	bool TryFind(const key_type& key, mapped_type* out) const
 	{
 		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
 		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
@@ -224,6 +224,24 @@ public:
 		}
 
 		return false;
+	}
+
+	const mapped_type& At(const key_type& key) const
+	{
+		uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+		const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+		for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+		{
+			const uint32_t tableIndex = hashIndex & TableSizeMask;
+			if (Table[tableIndex].first == key)
+			{
+				return Table[tableIndex].second;
+			}
+		}
+
+		//Hardware::FlashingStop(10);
+		assert(false);
+		return *reinterpret_cast<mapped_type*>(0);
 	}
 
 	mapped_type& At(const key_type& key)
