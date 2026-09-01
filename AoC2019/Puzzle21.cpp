@@ -4,9 +4,6 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle21_2019_Types
 {
 }
@@ -39,15 +36,11 @@ static void InteractiveMode(Intputer* puter)
 }
 #endif
 
-static void Puzzle21_A(const string &filename)
+void Puzzle21_A_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	uIntputer<int32_t> puter(2200);
 
-	Intputer puter(input);
-
-	IntputerIO io;
+	uIntputerIO<int32_t> io;
 	puter.SetReadWriteQueues(&io);
 
 	string springbotProgram =
@@ -62,24 +55,19 @@ static void Puzzle21_A(const string &filename)
 	ranges::copy(springbotProgram | views::filter([](char c) { return c != '\t'; }), back_inserter(io.Read));
 
 	auto exec = puter.Execute();
-	assert(exec == Intputer::ExecutionResult::Finished);
+	assert(exec == uIntputerExecutionResult::Finished);
 	(void)exec;
 
-	int64_t answer = io.Write.back();
+	int32_t answer = io.Write.back();
 
-	printf("[2019] Puzzle21_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2019, 21, 1, answer);
 }
 
-
-static void Puzzle21_B(const string& filename)
+void Puzzle21_B_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	uIntputer<int32_t> puter(2200);
 
-	Intputer puter(input);
-
-	IntputerIO io;
+	uIntputerIO<int32_t> io;
 	puter.SetReadWriteQueues(&io);
 
 	string springbotProgram =
@@ -99,23 +87,7 @@ static void Puzzle21_B(const string& filename)
 
 	puter.Execute();
 
-	int64_t answer = io.Write.back();
+	int32_t answer = io.Write.back();
 
-	printf("[2019] Puzzle21_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle21_A_2019()
-{
-	Puzzle21_A(R"(z:\AoCInput\2019\Puzzle21.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 21, 1, answer);
-}
-
-void Puzzle21_B_2019()
-{
-	Puzzle21_B(R"(z:\AoCInput\2019\Puzzle21.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2019, 21, 2, answer);
 }
