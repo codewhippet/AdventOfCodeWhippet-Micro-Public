@@ -131,7 +131,7 @@ public:
 
 	uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char invalid);
 	uArrayMap2D(const std::shared_ptr<uArrayMap2DAllocator>& allocator, Vec2Int origin, int32_t width, int32_t height, char invalid);
-	uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char* data, char invalid);
+	uArrayMap2D(const std::shared_ptr<uArrayMap2DAllocator>& allocator, Vec2Int origin, int32_t width, int32_t height, char* data, char invalid);
 	uArrayMap2D(const uArrayMap2D& other);
 	uArrayMap2D(uArrayMap2DOptions options, const uArrayMap2D& other);
 	uArrayMap2D(uArrayMap2D&& other) noexcept;
@@ -186,3 +186,4 @@ private:
 // ----------------------------------------------------------------------------
 
 uArrayMap2D ReaduArrayMap(char emptyChar = '.');
+uArrayMap2D ReaduArrayMap_PresizedHeap(char* data, size_t dataSize, char emptyChar = '.');

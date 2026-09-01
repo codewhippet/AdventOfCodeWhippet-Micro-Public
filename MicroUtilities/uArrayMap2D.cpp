@@ -33,9 +33,9 @@ uArrayMap2D::uArrayMap2D(const std::shared_ptr<uArrayMap2DAllocator>& allocator,
 	m_invalid = invalid;
 }
 
-uArrayMap2D::uArrayMap2D(Vec2Int origin, int32_t width, int32_t height, char* data, char invalid)
+uArrayMap2D::uArrayMap2D(const std::shared_ptr<uArrayMap2DAllocator>& allocator, Vec2Int origin, int32_t width, int32_t height, char* data, char invalid)
 {
-	m_allocator = CreateArrayMap2DAllocator_MemAlloc();
+	m_allocator = allocator;
 
 	m_origin = origin;
 	m_width = width;
@@ -403,7 +403,29 @@ uArrayMap2D ReaduArrayMap(char emptyChar)
 
 	MemArena_ShrinkAlloc(mapData, used);
 
-	return uArrayMap2D(Vec2Int{ 0, 0 }, dimensions.X, dimensions.Y, mapData, emptyChar);
+	return uArrayMap2D(CreateArrayMap2DAllocator_MemAlloc(), Vec2Int{ 0, 0 }, dimensions.X, dimensions.Y, mapData, emptyChar);
+}
+
+uArrayMap2D ReaduArrayMap_PresizedHeap(char* data, size_t dataSize, char emptyChar)
+{
+	(void)dataSize;
+	size_t used = 0;
+
+	Vec2Int dimensions;
+	while (PuzzleInput::NextLine())
+	{
+		dimensions.Y++;
+		dimensions.X = 0;
+		for (int c = PuzzleInput::GetChar(); c != '\n'; c = PuzzleInput::GetChar())
+		{
+			assert(used <= dataSize);
+			dimensions.X++;
+
+			data[used++] = (char)c;
+		}
+	}
+
+	return uArrayMap2D(CreateArrayMap2DAllocator_Heap(), Vec2Int{ 0, 0 }, dimensions.X, dimensions.Y, data, emptyChar);
 }
 
 // ----------------------------------------------------------------------------
