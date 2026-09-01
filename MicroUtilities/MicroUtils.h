@@ -20,6 +20,8 @@
 #include "Counting.h"
 #include "SmallVector.h"
 #include "NameDictionary.h"
+#include "BFS.h"
+#include "Dijkstra.h"
 
 char* strdup_memarena(const char* tempBuffer);
 int32_t sprint_digits(char* dest, int32_t value);
