@@ -80,6 +80,11 @@ public:
 		return Data[Size++];
 	}
 
+	void Clear()
+	{
+		Size = 0;
+	}
+
 	reference operator[](size_t index)
 	{
 		assert(index < Size);
