@@ -98,28 +98,31 @@ static ModularEquation Compose(const ModularEquation& f, const ModularEquation& 
 	return ret;
 }
 
-static ModularEquation ComposeShuffleSteps(istream& input, int64_t deckSize)
+static ModularEquation ComposeShuffleSteps(int64_t deckSize)
 {
 	ModularEquation ret{ 1, 0, deckSize };
-	for (const string& line : ReadEachLine(input))
+
+	char lineBuffer[32];
+	while (PuzzleInput::NextLine())
 	{
-		int64_t param = 0;
-		if (line == "deal into new stack"sv)
+		Parse::ReadNonEmptyLine(lineBuffer);
+		string_view line{ lineBuffer };
+
+		if (line.starts_with("deal into"sv))
 		{
 			ret = Compose(ret, { -1, -1, deckSize });
 		}
-		else if (sscanf(line.c_str(), "cut %lld", &param) == 1)
+		else if (line.starts_with("cut"sv))
 		{
+			int32_t param = Parse::GetInt32(line.data());
 			int64_t offset = param >= 0 ? param : deckSize + param;
 			ret = Compose(ret, { 1, offset, deckSize });
 		}
-		else if (sscanf(line.c_str(), "deal with increment %lld", &param) == 1)
-		{
-			ret = Compose(ret, { MultiplicativeInverse(deckSize, param), 0, deckSize });
-		}
 		else
 		{
-			assert(false);
+			assert(line.starts_with("deal with"sv));
+			int32_t param = Parse::GetInt32(line.data());
+			ret = Compose(ret, { MultiplicativeInverse(deckSize, param), 0, deckSize });
 		}
 	}
 
@@ -140,14 +143,10 @@ static int64_t RepeatEquation(int64_t x, ModularEquation f, int64_t repeatCount)
 	return x;
 }
 
-static void Puzzle22_A(const string &filename)
+void Puzzle22_A_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
 	const int64_t deckSize = 10007;
-	ModularEquation meq = ComposeShuffleSteps(input, deckSize);
+	ModularEquation meq = ComposeShuffleSteps(deckSize);
 
 	// (A.x + B = 2019) % M
 	// (A.x = 2019 - B) % M
@@ -155,36 +154,16 @@ static void Puzzle22_A(const string &filename)
 	int64_t inv = MultiplicativeInverse(meq.M, meq.A);
 	int64_t answer = (inv * (meq.M + 2019 - meq.B)) % meq.M;
 
-	printf("[2019] Puzzle22_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle22_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const int64_t deckSize = 119315717514047ll;
-	ModularEquation meq = ComposeShuffleSteps(input, deckSize);
-
-	const int64_t numShuffles = 101741582076661ll;
-	int64_t answer = RepeatEquation(2020, meq, numShuffles);
-
-	printf("[2019] Puzzle22_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle22_A_2019()
-{
-	Puzzle22_A(R"(z:\AoCInput\2019\Puzzle22.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2019, 22, 1, answer);
 }
 
 void Puzzle22_B_2019()
 {
-	Puzzle22_B(R"(z:\AoCInput\2019\Puzzle22.txt)");
+	const int64_t deckSize = 119315717514047ll;
+	ModularEquation meq = ComposeShuffleSteps(deckSize);
 
-	int32_t answer = 0;
+	const int64_t numShuffles = 101741582076661ll;
+	int64_t answer = RepeatEquation(2020, meq, numShuffles);
+
 	PuzzleOutput::Submit(2019, 22, 2, answer);
 }
