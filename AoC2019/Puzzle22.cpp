@@ -149,16 +149,11 @@ static void Puzzle22_A(const string &filename)
 	const int64_t deckSize = 10007;
 	ModularEquation meq = ComposeShuffleSteps(input, deckSize);
 
-	int64_t answer = -1;
-	for (int64_t i = 0; i < deckSize; i++)
-	{
-		int64_t x = meq.Evaluate(i);
-		if (x == 2019)
-		{
-			answer = i;
-			break;
-		}
-	}
+	// (A.x + B = 2019) % M
+	// (A.x = 2019 - B) % M
+	// x = (A^-1 * (2019 - B)) % M
+	int64_t inv = MultiplicativeInverse(meq.M, meq.A);
+	int64_t answer = (inv * (meq.M + 2019 - meq.B)) % meq.M;
 
 	printf("[2019] Puzzle22_A: %" PRId64 "\n", answer);
 }
