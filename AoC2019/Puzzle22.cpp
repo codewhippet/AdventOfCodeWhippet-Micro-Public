@@ -3,65 +3,20 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle22_2019_Types
 {
-	enum class ShuffleMove
-	{
-		Reverse,
-		Cut,
-		Increment,
-	};
-
 	struct ModularEquation
 	{
-		int64_t Coefficient = 0;
-		int64_t Constant = 0;
-		int64_t Modulo = 0;
+		// (A.x + B) % M
+		int64_t A;
+		int64_t B;
+		int64_t M;
 
-		void Multiply(int64_t scale);
-		void Add(int64_t value);
-		void NegateAndAdd(int64_t value);
+		int64_t Evaluate(int64_t x) const;
 	};
 }
 
 using namespace Puzzle22_2019_Types;
-
-static vector<int64_t> MakeDeck(size_t cards)
-{
-	vector<int64_t> deck(cards);
-	iota(deck.begin(), deck.end(), 0);
-	return deck;
-}
-
-static vector<pair<ShuffleMove, int64_t>> ReadShuffleSteps(istream& input)
-{
-	vector<pair<ShuffleMove, int64_t>> shuffleSteps;
-	for (const string& line : ReadEachLine(input))
-	{
-		int64_t param = 0;
-		if (line == "deal into new stack"sv)
-		{
-			shuffleSteps.push_back({ ShuffleMove::Reverse, 0 });
-		}
-		else if (sscanf(line.c_str(), "cut %lld", &param) == 1)
-		{
-			shuffleSteps.push_back({ ShuffleMove::Cut, param });
-		}
-		else if (sscanf(line.c_str(), "deal with increment %lld", &param) == 1)
-		{
-			shuffleSteps.push_back({ ShuffleMove::Increment, param });
-		}
-		else
-		{
-			assert(false);
-		}
-	}
-
-	return shuffleSteps;
-}
 
 static int64_t MultiplicativeInverse(int64_t deckSize, int64_t increment)
 {
@@ -99,62 +54,90 @@ static int64_t MultiplicativeInverse(int64_t deckSize, int64_t increment)
 
 static int64_t MulMod(int64_t a, int64_t b, int64_t mod)
 {
-	__int64 hi;
-	__int64 lo = _mul128(a, b, &hi);
-	__int64 remainder;
-	__int64 quotient = _div128(hi, lo, mod, &remainder);
-	(void)quotient;
-	return remainder;
-}
-
-void ModularEquation::Multiply(int64_t scale)
-{
-	Coefficient = MulMod(Coefficient, scale, Modulo);
-	Constant = MulMod(Constant, scale, Modulo);
-}
-
-void ModularEquation::Add(int64_t value)
-{
-	Constant = (Constant + value) % Modulo;
-}
-
-void ModularEquation::NegateAndAdd(int64_t value)
-{
-	Coefficient = Modulo - Coefficient;
-
-	Constant = value - Constant + Modulo;
-	Constant = Constant % Modulo;
-}
-
-static ModularEquation RepeatModularEquation(const ModularEquation& meq, int repeatCount)
-{
-	ModularEquation repeatedMeq{ 1, 0, meq.Modulo };
-	for (int i = 0; i < repeatCount; i++)
+	int64_t result = 0;
+	while (a)
 	{
-		repeatedMeq.Multiply(meq.Coefficient);
-		repeatedMeq.Add(meq.Constant);
+		if (a & 1)
+		{
+			result = (result + b) % mod;
+		}
+		a >>= 1;
+		b = (b << 1) % mod;
 	}
-	return repeatedMeq;
+	return result;
 }
 
-static vector<ModularEquation> BuildEquationLadder(const ModularEquation& meq, int repeatCount, int ladderHeight)
+int64_t Puzzle22_2019_Types::ModularEquation::Evaluate(int64_t x) const
 {
-	vector<ModularEquation> ladder{ meq };
-	for (int i = 0; i < ladderHeight - 1; i++)
-	{
-		ladder.push_back(RepeatModularEquation(ladder.back(), repeatCount));
-	}
-	return ladder;
+	return (MulMod(A, x, M) + B) % M;
 }
 
-static int64_t RepeatShuffle(int64_t slot, const ModularEquation& meq, int repeatCount)
+static ModularEquation Compose(const ModularEquation& f, const ModularEquation& g)
 {
-	for (int64_t i = 0; i < repeatCount; i++)
+	// (A.(c.x + d) + B) % M
+	// (A.c.x + A.d + B) % M
+	// A' = A.c
+	// B' = A.d + B
+	// (A'.x + B') % M
+
+	assert(f.M == g.M);
+
+	ModularEquation ret = f;
+
+	int64_t ac = MulMod(f.A, g.A, f.M);
+	int64_t ad = MulMod(f.A, g.B, f.M);
+	ret.A = f.M + ac;
+	ret.B = f.M + ad + f.B;
+
+	assert(ret.A >= 0);
+	assert(ret.B >= 0);
+
+	ret.A = ret.A % ret.M;
+	ret.B = ret.B % ret.M;
+
+	return ret;
+}
+
+static ModularEquation ComposeShuffleSteps(istream& input, int64_t deckSize)
+{
+	ModularEquation ret{ 1, 0, deckSize };
+	for (const string& line : ReadEachLine(input))
 	{
-		slot = MulMod(slot, meq.Coefficient, meq.Modulo);
-		slot = (slot + meq.Constant) % meq.Modulo;
+		int64_t param = 0;
+		if (line == "deal into new stack"sv)
+		{
+			ret = Compose(ret, { -1, -1, deckSize });
+		}
+		else if (sscanf(line.c_str(), "cut %lld", &param) == 1)
+		{
+			int64_t offset = param >= 0 ? param : deckSize + param;
+			ret = Compose(ret, { 1, offset, deckSize });
+		}
+		else if (sscanf(line.c_str(), "deal with increment %lld", &param) == 1)
+		{
+			ret = Compose(ret, { MultiplicativeInverse(deckSize, param), 0, deckSize });
+		}
+		else
+		{
+			assert(false);
+		}
 	}
-	return slot;
+
+	return ret;
+}
+
+static int64_t RepeatEquation(int64_t x, ModularEquation f, int64_t repeatCount)
+{
+	while (repeatCount)
+	{
+		if (repeatCount & 1)
+		{
+			x = f.Evaluate(x);
+		}
+		repeatCount >>= 1;
+		f = Compose(f, f);
+	}
+	return x;
 }
 
 static void Puzzle22_A(const string &filename)
@@ -163,51 +146,22 @@ static void Puzzle22_A(const string &filename)
 	ifstream input(filename);
 	//istringstream input(dummy);
 
-	const vector<pair<ShuffleMove, int64_t>> shuffleSteps = ReadShuffleSteps(input);
+	const int64_t deckSize = 10007;
+	ModularEquation meq = ComposeShuffleSteps(input, deckSize);
 
-	vector<int64_t> deck = MakeDeck(10007);
-
-	for (const auto& shuffleMove : shuffleSteps)
+	int64_t answer = -1;
+	for (int64_t i = 0; i < deckSize; i++)
 	{
-		int64_t param = shuffleMove.second;
-		if (shuffleMove.first == ShuffleMove::Reverse)
+		int64_t x = meq.Evaluate(i);
+		if (x == 2019)
 		{
-			ranges::reverse(deck);
-		}
-		else if (shuffleMove.first == ShuffleMove::Cut)
-		{
-			vector<int64_t> newDeck(deck.size());
-
-			int64_t offset = param >= 0 ? param : deck.size() + param;
-			for (size_t i = 0; i < deck.size(); i++)
-			{
-				newDeck[i] = deck[(i + offset) % deck.size()];
-			}
-
-			deck.swap(newDeck);
-		}
-		else if (shuffleMove.first == ShuffleMove::Increment)
-		{
-			vector<int64_t> newDeck(deck.size());
-
-			for (size_t i = 0; i < deck.size(); i++)
-			{
-				newDeck[(i * param) % newDeck.size()] = deck[i];
-			}
-
-			deck.swap(newDeck);
-		}
-		else
-		{
-			assert(false);
+			answer = i;
+			break;
 		}
 	}
 
-	int64_t answer = distance(deck.begin(), ranges::find(deck, 2019));
-
 	printf("[2019] Puzzle22_A: %" PRId64 "\n", answer);
 }
-
 
 static void Puzzle22_B(const string& filename)
 {
@@ -215,47 +169,11 @@ static void Puzzle22_B(const string& filename)
 	ifstream input(filename);
 	//istringstream input(dummy);
 
-	vector<pair<ShuffleMove, int64_t>> shuffleSteps = ReadShuffleSteps(input);
-	ranges::reverse(shuffleSteps);
+	const int64_t deckSize = 119315717514047ll;
+	ModularEquation meq = ComposeShuffleSteps(input, deckSize);
 
-	int64_t deckSize = 119315717514047ll;
-
-	ModularEquation meq{ 1, 0, deckSize };
-	for (const auto& shuffleMove : shuffleSteps)
-	{
-		int64_t param = shuffleMove.second;
-		if (shuffleMove.first == ShuffleMove::Reverse)
-		{
-			meq.NegateAndAdd(deckSize - 1);
-		}
-		else if (shuffleMove.first == ShuffleMove::Cut)
-		{
-			int64_t offset = param >= 0 ? param : deckSize + param;
-			meq.Add(offset);
-		}
-		else if (shuffleMove.first == ShuffleMove::Increment)
-		{
-			int64_t inverse = MultiplicativeInverse(deckSize, param);
-			meq.Multiply(inverse);
-		}
-		else
-		{
-			assert(false);
-		}
-	}
-
-	vector<ModularEquation> ladder = BuildEquationLadder(meq, 10, 16);
-
-	int64_t numShuffles = 101741582076661ll;
-
-	int64_t answer = 2020;
-	size_t digit = 0;
-	while (numShuffles > 0)
-	{
-		answer = RepeatShuffle(answer, ladder[digit], numShuffles % 10);
-		numShuffles /= 10;
-		digit++;
-	}
+	const int64_t numShuffles = 101741582076661ll;
+	int64_t answer = RepeatEquation(2020, meq, numShuffles);
 
 	printf("[2019] Puzzle22_B: %" PRId64 "\n", answer);
 }
