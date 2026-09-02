@@ -73,7 +73,6 @@ public:
 		//**TODO
 		(void)start;
 		assert(false);
-		return 0;
 	}
 
 private:

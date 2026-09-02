@@ -50,7 +50,7 @@ namespace Puzzle20_2019_Types
 	struct Teleporter
 	{
 		Vec2Int Location;
-		Label Label;
+		Label ID;
 		bool IsOuter;
 	};
 
@@ -444,7 +444,7 @@ void Puzzle20_A_2019()
 	// Connect the inner and outer teleporters
 	for (const auto& p : AllUnorderedPairs(puzzle.Teleporters.size()))
 	{
-		if (puzzle.Teleporters[p.first].Label == puzzle.Teleporters[p.second].Label)
+		if (puzzle.Teleporters[p.first].ID == puzzle.Teleporters[p.second].ID)
 		{
 			puzzle.TeleporterToTeleporterDistances((int32_t)p.first, (int32_t)p.second) = 1;
 			puzzle.TeleporterToTeleporterDistances((int32_t)p.second, (int32_t)p.first) = 1;
@@ -463,7 +463,7 @@ void Puzzle20_B_2019()
 	// Connect the inner and outer teleporters
 	for (const auto& p : AllUnorderedPairs(puzzle.Teleporters.size()))
 	{
-		if (puzzle.Teleporters[p.first].Label == puzzle.Teleporters[p.second].Label)
+		if (puzzle.Teleporters[p.first].ID == puzzle.Teleporters[p.second].ID)
 		{
 			puzzle.TeleporterToTeleporterDistances((int32_t)p.first, (int32_t)p.second) = 0;
 			puzzle.TeleporterToTeleporterDistances((int32_t)p.second, (int32_t)p.first) = 0;

@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include <intrin.h>
 
 using namespace std;
 

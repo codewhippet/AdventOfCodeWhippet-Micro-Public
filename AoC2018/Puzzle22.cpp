@@ -194,7 +194,7 @@ static uint32_t PackState(const Vec3Int& state)
 
 static Vec3Int UnpackState(uint32_t state)
 {
-	return { (state >> 16) & 0xfff, (state >> 4) & 0xfff, state & 0xf };
+	return { static_cast<int32_t>((state >> 16) & 0xfff), static_cast<int32_t>((state >> 4) & 0xfff), static_cast<int32_t>(state & 0xf) };
 }
 
 static int32_t FindQuickestPath(Cave* cave, const Vec2Int& startingLocation)

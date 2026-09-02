@@ -679,8 +679,8 @@ static int32_t ShortestPathSingleBot(const Puzzle& puzzle)
 			if (gScore.FindOrDefault(compressedNeighbour, numeric_limits<int16_t>::max()) > tentativeGScore)
 			{
 				gScore.Set(compressedNeighbour, static_cast<int16_t>(tentativeGScore));
-				int16_t priority = static_cast<int16_t>(tentativeGScore + Heuristic(neighbour.State, puzzle));
-				enqueue({ -priority, compressedNeighbour });
+				int32_t priority = tentativeGScore + Heuristic(neighbour.State, puzzle);
+				enqueue({ static_cast<int16_t>(-priority), compressedNeighbour });
 			}
 		}
 	}
