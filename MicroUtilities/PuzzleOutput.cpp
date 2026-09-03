@@ -25,3 +25,9 @@ void PuzzleOutput::Submit(int year, int puzzle, int part, const char* answer)
 	printf("[%d] Puzzle%02d_%c: %s\n\x17", year, puzzle, part == 1 ? 'A' : 'B', answer);
 	fflush(stdout);
 }
+
+void PuzzleOutput::Unsupported(int year, int puzzle, int part)
+{
+	printf("[%d] Puzzle%02d_%c: [UNSUPPORTED]\n\x17", year, puzzle, part == 1 ? 'A' : 'B');
+	fflush(stdout);
+}

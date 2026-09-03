@@ -215,6 +215,6 @@ void Puzzle14_B_2018()
 	}
 	else
 	{
-		PuzzleOutput::Submit(2018, 14, 2, "[UNSUPPORTED]");
+		PuzzleOutput::Unsupported(2018, 14, 2);
 	}
 }
