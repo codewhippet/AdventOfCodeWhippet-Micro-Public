@@ -281,14 +281,14 @@ int64_t ReadIntFromInput<int64_t>()
 
 // ----------------------------------------------------------------------------
 
-template<typename REGISTER_TYPE>
-uIntputer<REGISTER_TYPE>::uIntputer(size_t memorySize)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::uIntputer(size_t memorySize)
 {
 	ReadProgramFromInput(memorySize);
 }
 
-template<typename REGISTER_TYPE>
-uIntputer<REGISTER_TYPE>::uIntputer(const uIntputer& other)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::uIntputer(const uIntputer& other)
 	: Program(other.Program)
 	, PC(other.PC)
 	, RB(other.RB)
@@ -297,8 +297,8 @@ uIntputer<REGISTER_TYPE>::uIntputer(const uIntputer& other)
 {
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::ReadProgramFromInput(size_t memorySize)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::ReadProgramFromInput(size_t memorySize)
 {
 	Program.clear(); // Do we need this?
 	assert(Program.empty()); // Check
@@ -314,14 +314,14 @@ void uIntputer<REGISTER_TYPE>::ReadProgramFromInput(size_t memorySize)
 	Program.resize(memorySize);
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::CopyProgram(const std::vector<REGISTER_TYPE>& program)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::CopyProgram(const std::vector<REGISTER_TYPE>& program)
 {
-	Program = program;
+	Program.assign(program.begin(), program.end());
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::Reset(const std::vector<REGISTER_TYPE>& program)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::Reset(const std::vector<REGISTER_TYPE>& program)
 {
 	CopyProgram(program);
 	PC = 0;
@@ -330,8 +330,8 @@ void uIntputer<REGISTER_TYPE>::Reset(const std::vector<REGISTER_TYPE>& program)
 	WriteQueue->clear();
 }
 
-template<typename REGISTER_TYPE>
-REGISTER_TYPE uIntputer<REGISTER_TYPE>::ReadParam(REGISTER_TYPE parameter, ParameterMode mode)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+REGISTER_TYPE uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::ReadParam(REGISTER_TYPE parameter, ParameterMode mode)
 {
 	switch (mode)
 	{
@@ -348,8 +348,8 @@ REGISTER_TYPE uIntputer<REGISTER_TYPE>::ReadParam(REGISTER_TYPE parameter, Param
 	return std::numeric_limits<REGISTER_TYPE>::min();
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::WriteParam(REGISTER_TYPE parameter, ParameterMode mode, REGISTER_TYPE value)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::WriteParam(REGISTER_TYPE parameter, ParameterMode mode, REGISTER_TYPE value)
 {
 	switch (mode)
 	{
@@ -367,8 +367,8 @@ void uIntputer<REGISTER_TYPE>::WriteParam(REGISTER_TYPE parameter, ParameterMode
 	}
 }
 
-template<typename REGISTER_TYPE>
-uIntputerExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGISTER_TYPE breakAfter)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+uIntputerExecutionResult uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::Execute(REGISTER_TYPE breakAfter)
 {
 	REGISTER_TYPE instructionsExecuted = 0;
 	while (true)
@@ -495,45 +495,45 @@ uIntputerExecutionResult uIntputer<REGISTER_TYPE>::Execute(REGISTER_TYPE breakAf
 	return uIntputerExecutionResult::Exception;
 }
 
-template<typename REGISTER_TYPE>
-std::deque<REGISTER_TYPE>* uIntputer<REGISTER_TYPE>::GetReadQueue()
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+std::deque<REGISTER_TYPE>* uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::GetReadQueue()
 {
 	return ReadQueue;
 }
 
-template<typename REGISTER_TYPE>
-std::deque<REGISTER_TYPE>* uIntputer<REGISTER_TYPE>::GetWriteQueue()
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+std::deque<REGISTER_TYPE>* uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::GetWriteQueue()
 {
 	return WriteQueue;
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::SetReadQueue(std::deque<REGISTER_TYPE>* readQueue)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::SetReadQueue(std::deque<REGISTER_TYPE>* readQueue)
 {
 	ReadQueue = readQueue;
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::SetWriteQueue(std::deque<REGISTER_TYPE>* writeQueue)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::SetWriteQueue(std::deque<REGISTER_TYPE>* writeQueue)
 {
 	WriteQueue = writeQueue;
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::SetReadWriteQueues(std::deque<REGISTER_TYPE>* readQueue, std::deque<REGISTER_TYPE>* writeQueue)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::SetReadWriteQueues(std::deque<REGISTER_TYPE>* readQueue, std::deque<REGISTER_TYPE>* writeQueue)
 {
 	SetReadQueue(readQueue);
 	SetWriteQueue(writeQueue);
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::SetReadWriteQueues(uIntputerIO<REGISTER_TYPE>* io)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::SetReadWriteQueues(uIntputerIO<REGISTER_TYPE>* io)
 {
 	SetReadWriteQueues(&io->Read, &io->Write);
 }
 
-template<typename REGISTER_TYPE>
-void uIntputer<REGISTER_TYPE>::Poke(REGISTER_TYPE address, REGISTER_TYPE value)
+template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
+void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::Poke(REGISTER_TYPE address, REGISTER_TYPE value)
 {
 	Program[address] = value;
 }
@@ -573,3 +573,5 @@ template class uIntputerWithIO<int32_t>;
 template struct uIntputerIO<int64_t>;
 template class uIntputer<int64_t>;
 template class uIntputerWithIO<int64_t>;
+
+template class uIntputer<int64_t, MemArenaStlAllocator<int64_t>>;

@@ -94,7 +94,7 @@ enum class uIntputerExecutionResult
 	Exception,
 };
 
-template <typename REGISTER_TYPE>
+template <typename REGISTER_TYPE, typename VECTOR_ALLOCATOR = std::allocator<REGISTER_TYPE>>
 class uIntputer
 {
 public:
@@ -135,7 +135,7 @@ protected:
 	REGISTER_TYPE ReadParam(REGISTER_TYPE parameter, ParameterMode mode);
 	void WriteParam(REGISTER_TYPE parameter, ParameterMode mode, REGISTER_TYPE value);
 
-	std::vector<REGISTER_TYPE> Program;
+	std::vector<REGISTER_TYPE, VECTOR_ALLOCATOR> Program;
 	REGISTER_TYPE PC = 0;
 	REGISTER_TYPE RB = 0;
 
@@ -163,3 +163,5 @@ extern template class uIntputerWithIO<int32_t>;
 extern template struct uIntputerIO<int64_t>;
 extern template class uIntputer<int64_t>;
 extern template class uIntputerWithIO<int64_t>;
+
+extern template class uIntputer<int64_t, MemArenaStlAllocator<int64_t>>;
