@@ -3,16 +3,14 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle23_2019_Types
 {
+	using uIntputerPsram = uIntputer<int64_t, MemArenaStlAllocator<int64_t>>;
 }
 
 using namespace Puzzle23_2019_Types;
 
-static pair<int64_t, int64_t> RunUntilIdle(vector<Intputer>* nics, vector<IntputerIO>* network)
+static pair<int64_t, int64_t> RunUntilIdle(vector<uIntputerPsram>* nics, vector<uIntputerIO<int64_t>>* network)
 {
 	pair<int64_t, int64_t> nat;
 	size_t activeCards = 0;
@@ -21,8 +19,8 @@ static pair<int64_t, int64_t> RunUntilIdle(vector<Intputer>* nics, vector<Intput
 		activeCards = 0;
 		for (size_t card = 0; card < nics->size(); card++)
 		{
-			Intputer& nic = (*nics)[card];
-			IntputerIO& io = (*network)[card];
+			uIntputerPsram& nic = (*nics)[card];
+			uIntputerIO<int64_t>& io = (*network)[card];
 
 			if (io.Read.empty())
 			{
@@ -30,7 +28,7 @@ static pair<int64_t, int64_t> RunUntilIdle(vector<Intputer>* nics, vector<Intput
 			}
 
 			auto exec = nic.Execute();
-			assert(exec == Intputer::ExecutionResult::PendingIo);
+			assert(exec == uIntputerExecutionResult::PendingIo);
 			(void)exec;
 
 			if (io.Write.empty() == false)
@@ -65,91 +63,114 @@ static pair<int64_t, int64_t> RunUntilIdle(vector<Intputer>* nics, vector<Intput
 	return nat;
 }
 
-static void Puzzle23_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> firmware = ReadAsVectorOfNumbers(ReadSingleLine(input));
-
-	size_t numDevices = 50;
-
-	vector<Intputer> nics{ numDevices };
-	vector<IntputerIO> network{ numDevices };
-
-	for (size_t i = 0; i < nics.size(); i++)
-	{
-		nics[i].CopyProgram(firmware);
-		nics[i].SetReadWriteQueues(&network[i]);
-		network[i].Read.push_back(i);
-		auto exec = nics[i].Execute();
-		assert(exec == Intputer::ExecutionResult::PendingIo);
-		(void)exec;
-		assert(network[i].Write.size() == 0);
-	}
-
-	int64_t answer = RunUntilIdle(&nics, &network).second;
-		
-	printf("[2019] Puzzle23_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle23_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> firmware = ReadAsVectorOfNumbers(ReadSingleLine(input));
-
-	size_t numDevices = 50;
-
-	vector<Intputer> nics{ numDevices };
-	vector<IntputerIO> network{ numDevices };
-
-	for (size_t i = 0; i < nics.size(); i++)
-	{
-		nics[i].CopyProgram(firmware);
-		nics[i].SetReadWriteQueues(&network[i]);
-		network[i].Read.push_back(i);
-		auto exec = nics[i].Execute();
-		assert(exec == Intputer::ExecutionResult::PendingIo);
-		(void)exec;
-		assert(network[i].Write.size() == 0);
-	}
-
-	int64_t answer = 0;
-
-	set<pair<int64_t, int64_t>> packets;
-	while (true)
-	{
-		auto restartPacket = RunUntilIdle(&nics, &network);
-		if (packets.insert(restartPacket).second == false)
-		{
-			answer = restartPacket.second;
-			break;
-		}
-		
-		network[0].Read.push_back(restartPacket.first);
-		network[0].Read.push_back(restartPacket.second);
-	}
-
-	printf("[2019] Puzzle23_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle23_A_2019()
 {
-	Puzzle23_A(R"(z:\AoCInput\2019\Puzzle23.txt)");
+	const size_t psramNeeded = 1 * 1024 * 1024;
+	if (Hardware::PsramSize() >= psramNeeded)
+	{
+		const size_t firmwareSize = 2300;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 23, 1, answer);
+		vector<int64_t> firmware;
+		firmware.reserve(firmwareSize);
+		while (PuzzleInput::PeekChar() != '\n')
+		{
+			firmware.push_back(Parse::GetInt64());
+		}
+		firmware.resize(firmwareSize);
+
+		const size_t numDevices = 50;
+
+		MemArenaConfig cfg;
+		cfg.AuxiliaryRegion = Hardware::PsramBase();
+		cfg.AuxiliaryRegionSize = Hardware::PsramSize();
+
+		MemArena_Configure(cfg);
+		{
+			vector<uIntputerPsram> nics{ numDevices };
+			vector<uIntputerIO<int64_t>> network{ numDevices };
+
+			for (size_t i = 0; i < nics.size(); i++)
+			{
+				nics[i].CopyProgram(firmware);
+				nics[i].SetReadWriteQueues(&network[i]);
+				network[i].Read.push_back(i);
+				auto exec = nics[i].Execute();
+				assert(exec == uIntputerExecutionResult::PendingIo);
+				(void)exec;
+				assert(network[i].Write.size() == 0);
+			}
+
+			int64_t answer = RunUntilIdle(&nics, &network).second;
+
+			PuzzleOutput::Submit(2019, 23, 1, answer);
+		}
+		MemArena_Reset();
+	}
+	else
+	{
+		PuzzleOutput::Unsupported(2019, 23, 2);
+	}
 }
 
 void Puzzle23_B_2019()
 {
-	Puzzle23_B(R"(z:\AoCInput\2019\Puzzle23.txt)");
+	const size_t psramNeeded = 1 * 1024 * 1024;
+	if (Hardware::PsramSize() >= psramNeeded)
+	{
+		const size_t firmwareSize = 2300;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 23, 2, answer);
+		vector<int64_t> firmware;
+		firmware.reserve(firmwareSize);
+		while (PuzzleInput::PeekChar() != '\n')
+		{
+			firmware.push_back(Parse::GetInt64());
+		}
+		firmware.resize(firmwareSize);
+
+		const size_t numDevices = 50;
+
+		MemArenaConfig cfg;
+		cfg.AuxiliaryRegion = Hardware::PsramBase();
+		cfg.AuxiliaryRegionSize = Hardware::PsramSize();
+
+		MemArena_Configure(cfg);
+		{
+			vector<uIntputerPsram> nics{ numDevices };
+			vector<uIntputerIO<int64_t>> network{ numDevices };
+
+			for (size_t i = 0; i < nics.size(); i++)
+			{
+				nics[i].CopyProgram(firmware);
+				nics[i].SetReadWriteQueues(&network[i]);
+				network[i].Read.push_back(i);
+				auto exec = nics[i].Execute();
+				assert(exec == uIntputerExecutionResult::PendingIo);
+				(void)exec;
+				assert(network[i].Write.size() == 0);
+			}
+
+			int64_t answer = 0;
+
+			set<pair<int64_t, int64_t>> packets;
+			while (true)
+			{
+				auto restartPacket = RunUntilIdle(&nics, &network);
+				if (packets.insert(restartPacket).second == false)
+				{
+					answer = restartPacket.second;
+					break;
+				}
+
+				network[0].Read.push_back(restartPacket.first);
+				network[0].Read.push_back(restartPacket.second);
+			}
+
+			PuzzleOutput::Submit(2019, 23, 2, answer);
+		}
+		MemArena_Reset();
+	}
+	else
+	{
+		PuzzleOutput::Unsupported(2019, 23, 2);
+	}
 }
