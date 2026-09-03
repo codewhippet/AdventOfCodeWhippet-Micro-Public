@@ -24,6 +24,9 @@ struct MemArenaConfig
 	size_t NumSmallBlockCounts = 0;
 	size_t LargeBlockRegionSize = 0;
 
+	void* AuxiliaryRegion = nullptr;
+	size_t AuxiliaryRegionSize = 0;
+
 	uint32_t DebugFlags = MemArenaDebugFlags::None;
 };
 

@@ -35,7 +35,7 @@ private:
 	static size_t CalculateSizeRequiredForSBA(const MemArenaConfig& config);
 	static SmallBlockAllocator* InitialiseSBA(const MemArenaConfig& config, uint8_t* const regionStart, uint8_t** regionEnd);
 	static size_t CalculateSizeRequiredForLBA(const MemArenaConfig& config);
-	static LargeBlockAllocator* InitialiseLBA(const MemArenaConfig& config, uint8_t* regionStart, size_t regionSize);
+	static LargeBlockAllocator* InitialiseLBA(uint8_t* regionStart, size_t regionSize);
 
 	uint8_t* Region = nullptr;
 	size_t Size = 0;
@@ -43,6 +43,7 @@ private:
 
 	SmallBlockAllocator* SBA = nullptr;
 	LargeBlockAllocator* LBA = nullptr;
+	LargeBlockAllocator* ABA = nullptr;
 
 	static char ZeroAlloc;
 
@@ -374,7 +375,7 @@ public:
 	bool TryFree(void* ptr);
 
 	void* AllocLargest(size_t* allocated);
-	void ShrinkAlloc(void* ptr, size_t size);
+	bool TryShrinkAlloc(void* ptr, size_t size);
 
 	void Debug_PrintStats();
 	void Debug_PrintBlocks();
@@ -395,6 +396,9 @@ private:
 	uint64_t StartMarker = 0xb1ccb10c00000000ull;
 #endif
 
+	SmallPtr<uint8_t> RegionBegin{ 0 };
+	SmallPtr<uint8_t> RegionEnd{ 0 };
+
 	SmallPtr<LargeBlockHeader> Head;
 	SmallPtr<LargeBlockHeader> Tail;
 
@@ -409,6 +413,9 @@ LargeBlockAllocator::LargeBlockAllocator(uint8_t* regionBegin, size_t regionSize
 #if USE_MEMORY_FILL_PATTERNS
 	memset(regionBegin, 0xcb, regionSize);
 #endif
+
+	RegionBegin.Set(regionBegin);
+	RegionEnd.Set(RegionBegin.Get() + regionSize);
 
 	size_t regionSizeInBlocks = SizeInBlocksRoundDown(regionSize);
 	assert(regionSizeInBlocks >= 3);
@@ -510,6 +517,9 @@ void* LargeBlockAllocator::TryAlloc(size_t size)
 
 bool LargeBlockAllocator::TryFree(void* ptr)
 {
+	if ((ptr < RegionBegin.Get()) || (ptr >= RegionEnd.Get()))
+		return false;
+
 	LargeBlockHeader* block = static_cast<LargeBlockHeader*>(ptr) - 1;
 #if USE_MEMORY_FILL_PATTERNS
 	memset(ptr, 0xdd, block->SizeInBlocks * sizeof(LargeBlockHeader));
@@ -653,8 +663,11 @@ void* LargeBlockAllocator::AllocLargest(size_t* allocated)
 	return nullptr;
 }
 
-void LargeBlockAllocator::ShrinkAlloc(void* ptr, size_t size)
+bool LargeBlockAllocator::TryShrinkAlloc(void* ptr, size_t size)
 {
+	if ((ptr < RegionBegin.Get()) || (ptr >= RegionEnd.Get()))
+		return false;
+
 	LargeBlockHeader* blockToShrink = static_cast<LargeBlockHeader*>(ptr) - 1;
 	const size_t sizeInBlocks = SizeInBlocksRoundUp(size);
 	assert(sizeInBlocks <= blockToShrink->SizeInBlocks);
@@ -727,6 +740,8 @@ void LargeBlockAllocator::ShrinkAlloc(void* ptr, size_t size)
 	}
 
 	UpdateSizeInBlocksBetweenHeaders(blockToShrink);
+
+	return true;
 }
 
 void LargeBlockAllocator::Debug_PrintStats()
@@ -880,7 +895,8 @@ void MemArena::Initialise(const MemArenaConfig& config)
 	SBA = InitialiseSBA(config, Region, &lbaRegionStart);
 	NumSBAs = config.NumSmallBlockCounts;
 
-	LBA = InitialiseLBA(config, lbaRegionStart, lbaSize);
+	LBA = InitialiseLBA(lbaRegionStart, lbaSize);
+	ABA = InitialiseLBA(static_cast<uint8_t*>(config.AuxiliaryRegion), config.AuxiliaryRegionSize);
 }
 
 void MemArena::Reset()
@@ -908,7 +924,18 @@ void* MemArena::Alloc(size_t size)
 		}
 	}
 
-	void* ptr = LBA ? LBA->TryAlloc(size) : nullptr;
+	void* ptr = nullptr;
+
+	if ((ptr == nullptr) && LBA)
+	{
+		ptr = LBA->TryAlloc(size);
+	}
+
+	if ((ptr == nullptr) && ABA)
+	{
+		ptr = ABA->TryAlloc(size);
+	}
+	
 	return ptr;
 }
 
@@ -927,11 +954,18 @@ bool MemArena::Free(void* ptr)
 		}
 	}
 
-	bool returned = LBA ? LBA->TryFree(ptr) : false;
-	assert(returned);
-	(void)returned;
+	if (LBA && LBA->TryFree(ptr))
+	{
+		return true;
+	}
 
-	return returned;
+	if (ABA && ABA->TryFree(ptr))
+	{
+		return true;
+	}
+
+	assert(false);
+	return false;
 }
 
 void* MemArena::AllocLargest(size_t* allocated)
@@ -955,11 +989,17 @@ void MemArena::ShrinkAlloc(void* ptr, size_t newSize)
 		}
 	}
 
-	assert(LBA);
-	if (LBA)
+	if (LBA && LBA->TryShrinkAlloc(ptr, newSize))
 	{
-		LBA->ShrinkAlloc(ptr, newSize);
+		return;
 	}
+
+	if (ABA && ABA->TryShrinkAlloc(ptr, newSize))
+	{
+		return;
+	}
+
+	assert(false);
 }
 
 void MemArena::Debug_Print()
@@ -981,6 +1021,18 @@ void MemArena::Debug_Print()
 	if (LBA)
 	{
 		LBA->Debug_PrintBlocks();
+	}
+	printf("-------------------------------------\n");
+	printf("ABA Stats\n");
+	if (ABA)
+	{
+		ABA->Debug_PrintStats();
+	}
+	printf("-------------------------------------\n");
+	printf("ABA Blocks\n");
+	if (ABA)
+	{
+		ABA->Debug_PrintBlocks();
 	}
 	printf("-------------------------------------\n");
 }
@@ -1036,13 +1088,13 @@ size_t MemArena::CalculateSizeRequiredForLBA(const MemArenaConfig& config)
 	return lbaSize;
 }
 
-LargeBlockAllocator* MemArena::InitialiseLBA(const MemArenaConfig& config, uint8_t* regionStart, size_t regionSize)
+LargeBlockAllocator* MemArena::InitialiseLBA(uint8_t* regionStart, size_t regionSize)
 {
-	if (config.LargeBlockRegionSize == 0)
+	if (regionSize == 0)
 		return nullptr;
 
 	assert(IsAlign4(regionStart));
-	assert(CalculateSizeRequiredForLBA(config) <= regionSize);
+	assert(regionSize > sizeof(LargeBlockAllocator));
 
 #if USE_MEMORY_FILL_PATTERNS
 	memset(regionStart, 0xcb, regionSize);
@@ -1186,6 +1238,7 @@ void MemArena_Fuzz()
 
 	const size_t maxBlocksPerSBA = 8;
 	const size_t maxLBASize = 1024 * 1024;
+	const size_t maxABASize = 1024 * 1024;
 
 	std::vector<MemArenaSmallBlockCount> referenceSBAs =
 	{
@@ -1207,6 +1260,7 @@ void MemArena_Fuzz()
 		{ 1, 192 },
 	};
 
+	std::vector<uint8_t> auxiliaryBuffer(maxABASize);
 	for (int arena = 0; arena < arenaTests; arena++)
 	{
 		printf("Arena configuration %d...\n", arena);
@@ -1233,6 +1287,11 @@ void MemArena_Fuzz()
 		cfg.SmallBlockCounts = sbas.data();
 		cfg.NumSmallBlockCounts = sbas.size();
 		cfg.LargeBlockRegionSize = rand() % maxLBASize;
+		cfg.AuxiliaryRegionSize = rand() % maxABASize;
+		if (cfg.AuxiliaryRegionSize)
+		{
+			cfg.AuxiliaryRegion = auxiliaryBuffer.data();
+		}
 
 		MemArena_Configure(cfg);
 		MemArena_DebugPrint();
