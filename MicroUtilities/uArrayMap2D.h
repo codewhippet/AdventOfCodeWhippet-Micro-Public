@@ -3,6 +3,7 @@
 #include "Vec2.h"
 #include <iterator>
 #include <memory>
+#include <span>
 #include <stdint.h>
 
 class uArrayMap2D;
@@ -167,7 +168,8 @@ public:
 	void Print() const;
 	void Save(const char* filename) const;
 
-	std::vector<char> GetData() const;
+	std::span<const char> GetData() const;
+	std::span<char> GetData();
 
 private:
 

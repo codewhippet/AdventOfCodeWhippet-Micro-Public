@@ -298,9 +298,14 @@ void uArrayMap2D::Save(const char* filename) const
 	fclose(f);
 }
 
-std::vector<char> uArrayMap2D::GetData() const
+std::span<const char> uArrayMap2D::GetData() const
 {
-	return std::vector<char>(&m_pStorage[0], &m_pStorage[GetDataSize()]);
+	return std::span<char>(&m_pStorage[0], GetDataSize());
+}
+
+std::span<char> uArrayMap2D::GetData()
+{
+	return std::span<char>(&m_pStorage[0], GetDataSize());
 }
 
 int32_t uArrayMap2D::GetDataSize() const

@@ -121,7 +121,7 @@ void Puzzle18_B_2018()
 		size_t lam = 1;
 		hare.Update();
 
-		while (hare.Current().GetData() != tortoise.Current().GetData())
+		while (ranges::equal(hare.Current().GetData(), tortoise.Current().GetData()) == false)
 		{
 			if (power == lam)
 			{
@@ -141,7 +141,7 @@ void Puzzle18_B_2018()
 			tortoise.Update();
 		}
 
-		const vector<char>& lumberArea = tortoise.Current().GetData();
+		const span<const char>& lumberArea = tortoise.Current().GetData();
 
 		int32_t answer = static_cast<int32_t>(ranges::count(lumberArea, '|') * ranges::count(lumberArea, '#'));
 
