@@ -6,6 +6,7 @@
 #include <list>
 #include <set>
 #include <map>
+#include <span>
 
 using ustring = std::basic_string<char, std::char_traits<char>, MemArenaStlAllocator<char>>;
 
