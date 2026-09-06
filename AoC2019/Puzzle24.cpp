@@ -1,9 +1,7 @@
 #include "stdafx.h"
+#include <span>
 
 using namespace std;
-
-static string_view dummy =
-R"()";
 
 namespace Puzzle24_2019_Types
 {
@@ -11,110 +9,60 @@ namespace Puzzle24_2019_Types
 
 using namespace Puzzle24_2019_Types;
 
-static ArrayMap2D Step(const ArrayMap2D& oldEris)
+static int32_t GridIndex(const Vec3Int& v)
 {
-	ArrayMap2D newEris(oldEris);
-	for (const auto& p : oldEris.Grid())
-	{
-		int64_t bugCount = ranges::count(Point2::CardinalDirections() | views::transform([&](const Point2& dir) { return oldEris(p.first + dir); }), '#');
-
-		// A bug dies (becoming an empty space) unless there is exactly one bug adjacent to it.
-		if ((p.second == '#') && (bugCount != 1))
-			newEris(p.first) = '.';
-
-		// An empty space becomes infested with a bug if exactly one or two bugs are adjacent to it.
-		if ((p.second == '.') && ((bugCount == 1) || (bugCount == 2)))
-			newEris(p.first) = '#';
-	}
-	return newEris;
+	assert(v.Z == 0);
+	return (v.Y * 5) + v.X;
 }
 
-static uint32_t CalculateBiodiversity(const ArrayMap2D& eris)
+static int32_t OffsetFromTo(const Vec3Int& from, const Vec3Int& to)
 {
-	uint32_t biodiversity = 0;
-	for (size_t i = 0; i < eris.GetData().size(); i++)
-	{
-		if (eris.GetData()[i] == '#')
-		{
-			biodiversity |= 1 << i;
-		}
-	}
-	return biodiversity;
+	int32_t offset = 0;
+	offset += (to.X - from.X) * 1;
+	offset += (to.Y - from.Y) * 5;
+	offset += (to.Z - from.Z) * 25;
+	return offset;
 }
 
-static int64_t FindFirstRepeat(ArrayMap2D eris)
+static vector<SmallVector<int32_t, 8>> BuildRecursiveNeighbours()
 {
-	set<uint32_t> seen;
-	while (true)
-	{
-		uint32_t biodiversity = CalculateBiodiversity(eris);
-		if (seen.insert(biodiversity).second == false)
-			return biodiversity;
+	vector<SmallVector<int32_t, 8>> neighbours;
+	neighbours.resize(25);
 
-		eris = Step(eris);
-	}
-}
+	constexpr Vec3Int G01{ 0, 0, 0 };
+	constexpr Vec3Int G02{ 1, 0, 0 };
+	constexpr Vec3Int G03{ 2, 0, 0 };
+	constexpr Vec3Int G04{ 3, 0, 0 };
+	constexpr Vec3Int G05{ 4, 0, 0 };
 
-static set<Vector3> MakeEris(const ArrayMap2D& erisSlice)
-{
-	set<Vector3> eris;
-	ranges::copy(erisSlice.Grid()
-		| views::filter([&](const auto& p)
-			{
-				return p.second == '#';
-			})
-		| views::transform([](const auto& p)
-			{
-				return Vector3{ p.first.X, p.first.Y, 0 };
-			}),
-		inserter(eris, eris.end()));
-	return eris;
-}
+	constexpr Vec3Int G06{ 0, 1, 0 };
+	constexpr Vec3Int G07{ 1, 1, 0 };
+	constexpr Vec3Int G08{ 2, 1, 0 };
+	constexpr Vec3Int G09{ 3, 1, 0 };
+	constexpr Vec3Int G10{ 4, 1, 0 };
 
-static size_t GridIndex(const Vector3& v)
-{
-	// Map to the same grid index used in the puzzle text for convenience
-	return (v.Y * 5) + v.X + 1;
-}
-
-static const vector<vector<Vector3>> BuildNeighbours()
-{
-	vector<vector<Vector3>> neighbours{ 26 };
-
-	constexpr Vector3 G01{ 0, 0, 0 };
-	constexpr Vector3 G02{ 1, 0, 0 };
-	constexpr Vector3 G03{ 2, 0, 0 };
-	constexpr Vector3 G04{ 3, 0, 0 };
-	constexpr Vector3 G05{ 4, 0, 0 };
-
-	constexpr Vector3 G06{ 0, 1, 0 };
-	constexpr Vector3 G07{ 1, 1, 0 };
-	constexpr Vector3 G08{ 2, 1, 0 };
-	constexpr Vector3 G09{ 3, 1, 0 };
-	constexpr Vector3 G10{ 4, 1, 0 };
-
-	constexpr Vector3 G11{ 0, 2, 0 };
-	constexpr Vector3 G12{ 1, 2, 0 };
+	constexpr Vec3Int G11{ 0, 2, 0 };
+	constexpr Vec3Int G12{ 1, 2, 0 };
 	// G13
-	constexpr Vector3 G14{ 3, 2, 0 };
-	constexpr Vector3 G15{ 4, 2, 0 };
+	constexpr Vec3Int G14{ 3, 2, 0 };
+	constexpr Vec3Int G15{ 4, 2, 0 };
 
-	constexpr Vector3 G16{ 0, 3, 0 };
-	constexpr Vector3 G17{ 1, 3, 0 };
-	constexpr Vector3 G18{ 2, 3, 0 };
-	constexpr Vector3 G19{ 3, 3, 0 };
-	constexpr Vector3 G20{ 4, 3, 0 };
+	constexpr Vec3Int G16{ 0, 3, 0 };
+	constexpr Vec3Int G17{ 1, 3, 0 };
+	constexpr Vec3Int G18{ 2, 3, 0 };
+	constexpr Vec3Int G19{ 3, 3, 0 };
+	constexpr Vec3Int G20{ 4, 3, 0 };
 
-	constexpr Vector3 G21{ 0, 4, 0 };
-	constexpr Vector3 G22{ 1, 4, 0 };
-	constexpr Vector3 G23{ 2, 4, 0 };
-	constexpr Vector3 G24{ 3, 4, 0 };
-	constexpr Vector3 G25{ 4, 4, 0 };
+	constexpr Vec3Int G21{ 0, 4, 0 };
+	constexpr Vec3Int G22{ 1, 4, 0 };
+	constexpr Vec3Int G23{ 2, 4, 0 };
+	constexpr Vec3Int G24{ 3, 4, 0 };
+	constexpr Vec3Int G25{ 4, 4, 0 };
 
-	constexpr Vector3 Inner{ 0, 0, 1 };
-	constexpr Vector3 Outer{ 0, 0, -1 };
+	constexpr Vec3Int Inner{ 0, 0, 1 };
+	constexpr Vec3Int Outer{ 0, 0, -1 };
 
-	vector<pair<Vector3, vector<Vector3>>> samePlaneAdjacencies =
+	const vector<pair<Vec3Int, vector<Vec3Int>>> samePlaneAdjacencies =
 	{
 		{ G01, { G02, G06 } },
 		{ G02, { G03, G07 } },
@@ -150,12 +98,12 @@ static const vector<vector<Vector3>> BuildNeighbours()
 	{
 		for (const auto& link : samePlane.second)
 		{
-			neighbours[GridIndex(samePlane.first)].push_back(link);
-			neighbours[GridIndex(link)].push_back(samePlane.first);
+			neighbours[GridIndex(samePlane.first)].PushBack(OffsetFromTo(samePlane.first, link));
+			neighbours[GridIndex(link)].PushBack(OffsetFromTo(link, samePlane.first));
 		}
 	}
 
-	vector<pair<Vector3, vector<Vector3>>> innerOuterAdjacencies =
+	const vector<pair<Vec3Int, vector<Vec3Int>>> innerOuterAdjacencies =
 	{
 		{ G08, { G01, G02, G03, G04, G05 } },
 		{ G12, { G01, G06, G11, G16, G21 } },
@@ -167,90 +115,163 @@ static const vector<vector<Vector3>> BuildNeighbours()
 	{
 		for (const auto& link : differentPlane.second)
 		{
-			neighbours[GridIndex(differentPlane.first)].push_back(link + Inner);
-			neighbours[GridIndex(link)].push_back(differentPlane.first + Outer);
+			neighbours[GridIndex(differentPlane.first)].PushBack(OffsetFromTo(differentPlane.first, link + Inner));
+			neighbours[GridIndex(link)].PushBack(OffsetFromTo(link, differentPlane.first + Outer));
 		}
 	}
 
 	return neighbours;
 }
 
-static vector<Vector3> Neighbours(const Vector3& v)
+static void Step(const uArrayMap2D& oldEris, uArrayMap2D* newEris)
 {
-	static const vector<vector<Vector3>> baseNeighbours = BuildNeighbours();
-	vector<Vector3> neighbours = baseNeighbours[GridIndex(v)];
-	ranges::for_each(neighbours, [&](Vector3& n) { n.Z += v.Z; });
-	return neighbours;
-}
-
-static set<Vector3> Step(const set<Vector3>& oldEris)
-{
-	map<Vector3, int64_t> bugsAdjacent;
-	auto bugAdjacentPoints = views::join(oldEris | views::transform(Neighbours));
-	ranges::for_each(bugAdjacentPoints, [&](const Vector3& v) { bugsAdjacent[v]++; });
-
-	set<Vector3> newEris;
-
-	// A bug dies (becoming an empty space) unless there is exactly one bug adjacent to it
-	ranges::copy(oldEris | views::filter([&](const Vector3& bug) { return bugsAdjacent[bug] == 1; }), inserter(newEris, newEris.end()));
-
-	// An empty space becomes infested with a bug if exactly one or two bugs are adjacent to it.
-	ranges::copy(bugsAdjacent
-		| views::filter([&](const auto& p)
-			{
-				return !oldEris.contains(p.first) && ((p.second == 1) || (p.second == 2));
-			})
-		| views::keys,
-		inserter(newEris, newEris.end()));
-
-	return newEris;
-}
-
-static void Puzzle24_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	ArrayMap2D eris = ReadArrayMap(input);
-	int64_t answer = FindFirstRepeat(eris);
-
-	printf("[2019] Puzzle24_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle24_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	set<Vector3> eris = MakeEris(ReadArrayMap(input));
-
-	const int simulationSteps = 200;
-
-	for (int i = 0; i < simulationSteps; i++)
+	for (const auto& p : oldEris.Grid())
 	{
-		eris = Step(eris);
+		int32_t bugCount = static_cast<int32_t>(ranges::count(Vec2Int::CardinalDirections() | views::transform([&](const Vec2Int& dir) { return oldEris(p.first + dir); }), '#'));
+
+		if ((p.second == '#') && (bugCount != 1))
+		{
+			// A bug dies (becoming an empty space) unless there is exactly one bug adjacent to it.
+			(*newEris)(p.first) = '.';
+		}
+		else if ((p.second == '.') && ((bugCount == 1) || (bugCount == 2)))
+		{
+			// An empty space becomes infested with a bug if exactly one or two bugs are adjacent to it.
+			(*newEris)(p.first) = '#';
+		}
+		else
+		{
+			// No change
+			(*newEris)(p.first) = p.second;
+		}
 	}
+}
 
-	int64_t answer = (int64_t)eris.size();
+static int32_t CalculateBiodiversity(const uArrayMap2D& eris)
+{
+	int32_t biodiversity = 0;
+	for (size_t i = 0; i < eris.GetData().size(); i++)
+	{
+		if (eris.GetData()[i] == '#')
+		{
+			biodiversity |= 1 << i;
+		}
+	}
+	return biodiversity;
+}
 
-	printf("[2019] Puzzle24_B: %" PRId64 "\n", answer);
+static int32_t FindFirstRepeat(const vector<char>& erisStart)
+{
+	HashSet<int32_t> seen(64, 0xffffffff);
+
+	array<uArrayMap2D, 2> erises{
+		uArrayMap2D{ CreateArrayMap2DAllocator_Heap(), {}, 5, 5, '.'},
+		uArrayMap2D{ CreateArrayMap2DAllocator_Heap(), {}, 5, 5, '.'}
+	};
+
+	assert(erises[0].GetData().size() == erisStart.size());
+	memcpy(erises[0].GetData().data(), erisStart.data(), erisStart.size());
+
+	size_t currentEris = 0;
+	while (true)
+	{
+		int32_t biodiversity = CalculateBiodiversity(erises[currentEris]);
+		if (seen.Insert(biodiversity) == false)
+			return biodiversity;
+
+		Step(erises[currentEris], &erises[1 - currentEris]);
+		currentEris = 1 - currentEris;
+	}
+}
+
+static void StepRecursive(const vector<int32_t>& oldErises,
+	const vector<SmallVector<int32_t, 8>>& neighbours,
+	int32_t updateBegin,
+	int32_t updateEnd,
+	vector<int32_t>* newErises)
+{
+	for (int32_t cellIndex = updateBegin; cellIndex < updateEnd; cellIndex++)
+	{
+		int32_t gridIndex = cellIndex % 25;
+
+		int32_t bugCount = static_cast<int32_t>(ranges::count_if(neighbours[gridIndex], [&](int32_t offset) { return oldErises[cellIndex + offset] == '#'; }));
+
+		int32_t current = oldErises[cellIndex];
+
+		if ((current == '#') && (bugCount != 1))
+		{
+			// A bug dies (becoming an empty space) unless there is exactly one bug adjacent to it.
+			(*newErises)[cellIndex] = '.';
+		}
+		else if ((current == '.') && ((bugCount == 1) || (bugCount == 2)))
+		{
+			// An empty space becomes infested with a bug if exactly one or two bugs are adjacent to it.
+			(*newErises)[cellIndex] = '#';
+		}
+		else
+		{
+			// No change
+			(*newErises)[cellIndex] = current;
+		}
+	}
 }
 
 void Puzzle24_A_2019()
 {
-	Puzzle24_A(R"(z:\AoCInput\2019\Puzzle24.txt)");
+	vector<char> erisStart;
+	erisStart.reserve(25);
 
-	int32_t answer = 0;
+	for (int c = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
+	{
+		if (c != '\n')
+		{
+			erisStart.push_back(static_cast<char>(c));
+		}
+	}
+
+	int32_t answer = FindFirstRepeat(erisStart);
+
 	PuzzleOutput::Submit(2019, 24, 1, answer);
 }
 
 void Puzzle24_B_2019()
 {
-	Puzzle24_B(R"(z:\AoCInput\2019\Puzzle24.txt)");
+	vector<char> erisStart;
+	erisStart.reserve(25);
 
-	int32_t answer = 0;
+	for (int c = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
+	{
+		if (c != '\n')
+		{
+			erisStart.push_back(static_cast<char>(c));
+		}
+	}
+
+	vector<SmallVector<int32_t, 8>> neighbours = BuildRecursiveNeighbours();
+	(void)neighbours;
+
+	array<vector<int32_t>, 2> erises;
+	erises[0].resize(403 * 25, '.');
+	erises[1].resize(403 * 25, '.');
+
+	int32_t middleEris = 201 * 25;
+	for (size_t i = 0; i < 25; i++)
+	{
+		erises[0][middleEris + i] = erisStart[i];
+	}
+
+	int32_t currentEris = 0;
+	for (int32_t step = 0; step < 200; step++)
+	{
+		int32_t updateBegin = (201 - step - 1) * 25;
+		int32_t updateEnd = (201 + step + 2) * 25;
+
+		StepRecursive(erises[currentEris], neighbours, updateBegin, updateEnd, &erises[1 - currentEris]);
+
+		currentEris = 1 - currentEris;
+	}
+
+	int32_t answer = static_cast<int32_t>(ranges::count(erises[currentEris], '#'));
+
 	PuzzleOutput::Submit(2019, 24, 2, answer);
 }
