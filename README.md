@@ -13,8 +13,8 @@ This is a version of my [solution repo](https://github.com/codewhippet/AdventOfC
 * **2015 - Complete, optimised**
 * **2016 - Complete, optimised**
 * **2017 - Complete, optimised**
-* 2018 - Complete, not yet optimised
-* 2019 - Not started
+* **2018 - Complete, optimised**
+* 2019 - Complete, not yet optimised
 * 2020 - Not started
 * 2021 - Not started
 * 2022 - Not started
