@@ -2,35 +2,63 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle04_2020_Types
 {
 }
 
 using namespace Puzzle04_2020_Types;
 
-
-static void Puzzle04_A(const string &filename)
+static bool TryGetIdAndValue(const char** line, pair<string, string>* idAndValue)
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	idAndValue->first.clear();
+	idAndValue->second.clear();
 
-	vector<string> lines = ReadAllLines(input);
-	lines.push_back("");
+	const char* c = *line;
+	while (isspace(*c))
+	{
+		c++;
+	}
 
-	int64_t answer = 0;
+	bool foundSomething = false;
+	if (*c)
+	{
+		foundSomething = true;
+
+		// Field ID
+		while (*c != ':')
+		{
+			idAndValue->first += *c++;
+		}
+
+		assert(*c == ':');
+		c++;
+
+		// Field value
+		while (*c && !isspace(*c))
+		{
+			idAndValue->second += *c++;
+		}
+	}
+
+	*line = c;
+
+	return foundSomething;
+}
+
+void Puzzle04_A_2020()
+{
+	int32_t answer = 0;
 
 	set<string> requiredFields = { "byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid", "cid" };
 
-	regex fieldFormat(R"((\w{3}):)");
-
 	set<string> seenFields = { "cid" };
-	for (string line : lines)
+
+	char line[128];
+	while (PuzzleInput::PeekChar() != EOF)
 	{
-		if (line.empty())
+		int32_t lineSize = Parse::ReadLine(line, sizeof(line));
+
+		if (lineSize == 0)
 		{
 			if (seenFields == requiredFields)
 			{
@@ -38,31 +66,32 @@ static void Puzzle04_A(const string &filename)
 			}
 			seenFields.clear();
 			seenFields.insert("cid");
+
+			continue;
 		}
 
-		smatch match;
-		while (regex_search(line, match, fieldFormat))
+		pair<string, string> idAndValue;
+
+		const char* c = &line[0];
+		while (TryGetIdAndValue(&c, &idAndValue))
 		{
-			seenFields.insert(match[1].str());
-			line = match.suffix();
+			seenFields.insert(idAndValue.first);
 		}
 	}
 
-	printf("[2020] Puzzle04_A: %" PRId64 "\n", answer);
+	if (seenFields == requiredFields)
+	{
+		answer++;
+	}
+
+	PuzzleOutput::Submit(2020, 4, 1, answer);
 }
 
-static void Puzzle04_B(const string& filename)
+void Puzzle04_B_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	int32_t answer = 0;
 
-	vector<string> lines = ReadAllLines(input);
-	lines.push_back("");
-
-	int64_t answer = 0;
-
-	map<string, bool> requiredFields =
+	const map<string, bool> requiredFields =
 	{
 		{ "byr", true },
 		{ "iyr", true },
@@ -119,51 +148,38 @@ static void Puzzle04_B(const string& filename)
 		};
 	validation["cid"] = [](const string&) { return true; };
 
-	regex fieldFormat(R"((\w{3}):([^\s]+))");
-
-	int64_t invalid = 0;
-
 	map<string, bool> seenFields = { { "cid", true } };
-	for (string line : lines)
+
+	char line[128];
+	while (PuzzleInput::PeekChar() != EOF)
 	{
-		if (line.empty())
+		int32_t lineSize = Parse::ReadLine(line, sizeof(line));
+
+		if (lineSize == 0)
 		{
 			if (seenFields == requiredFields)
 			{
 				answer++;
 			}
-			else
-			{
-				invalid++;
-			}
 			seenFields.clear();
 			seenFields["cid"] = true;
+
+			continue;
 		}
 
-		smatch match;
-		while (regex_search(line, match, fieldFormat))
+		pair<string, string> idAndValue;
+
+		const char* c = &line[0];
+		while (TryGetIdAndValue(&c, &idAndValue))
 		{
-			string field = match[1].str();
-			seenFields[field] = validation[field](match[2].str());
-			line = match.suffix();
+			seenFields[idAndValue.first] = validation[idAndValue.first](idAndValue.second);
 		}
 	}
 
-	printf("[2020] Puzzle04_B: %" PRId64 "\n", answer);
-}
+	if (seenFields == requiredFields)
+	{
+		answer++;
+	}
 
-void Puzzle04_A_2020()
-{
-	Puzzle04_A(R"(z:\AoCInput\2020\Puzzle04.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 4, 1, answer);
-}
-
-void Puzzle04_B_2020()
-{
-	Puzzle04_B(R"(z:\AoCInput\2020\Puzzle04.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 4, 2, answer);
 }
