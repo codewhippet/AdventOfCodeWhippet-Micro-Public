@@ -1,7 +1,10 @@
 #include "Parse.h"
-#include "Parse.h"
 #include "stdafx.h"
+#include <iterator>
+#include <ranges>
 #include <assert.h>
+
+// ----------------------------------------------------------------------------
 
 template <typename INT_TYPE>
 static INT_TYPE GetInt()
@@ -128,6 +131,8 @@ uint32_t Parse::GetUint32(const char* line)
 	return GetUint<int32_t>(line);
 }
 
+// ----------------------------------------------------------------------------
+
 template <typename INT_TYPE>
 static bool TryGetIntFromLine(INT_TYPE* out)
 {
@@ -160,6 +165,8 @@ bool Parse::TryGetInt32FromLine(int32_t* out)
 {
 	return TryGetIntFromLine<int32_t>(out);
 }
+
+// ----------------------------------------------------------------------------
 
 int32_t Parse::ReadLine(char* dest, size_t bufferSize)
 {
@@ -223,6 +230,8 @@ void Parse::ReadNonEmptyLine(char* dest, size_t bufferSize)
 	(void)lineLength;
 }
 
+// ----------------------------------------------------------------------------
+
 void Parse::ReadAsVectorOfNumbers(const char* line, std::vector<int32_t>* out)
 {
 	while (line)
@@ -243,4 +252,90 @@ void Parse::ReadAsVectorOfNumbers(const char* line, std::vector<int32_t>* out)
 		}
 		out->push_back(wasMinus ? -result : result);
 	}
+}
+
+void Parse::ReadAllLines(std::vector<std::string> *out, size_t lineSizeHint)
+{
+	while (PuzzleInput::PeekChar() != EOF)
+	{
+		std::string line;
+		line.reserve(lineSizeHint);
+
+		for (int c = PuzzleInput::GetChar(); c != '\n'; c = PuzzleInput::GetChar())
+		{
+			line.push_back(static_cast<char>(c));
+		}
+
+		out->push_back(std::move(line));
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+static_assert(std::input_or_output_iterator<Parse::ReadUntilIterator>);
+static_assert(std::ranges::input_range<Parse::ReadUntilRange>);
+
+Parse::ReadUntilIterator::ReadUntilIterator()
+	: Current(0)
+	, Terminal(0)
+{
+	Next();
+}
+
+Parse::ReadUntilIterator::ReadUntilIterator(value_type terminal)
+	: Current(0)
+	, Terminal(terminal)
+{
+	Next();
+}
+
+Parse::ReadUntilIterator::ReadUntilIterator(value_type current, value_type terminal)
+	: Current(current)
+	, Terminal(terminal)
+{
+}
+
+Parse::ReadUntilIterator& Parse::ReadUntilIterator::operator++()
+{
+	Next();
+	return *this;
+}
+
+Parse::ReadUntilIterator Parse::ReadUntilIterator::operator++(int)
+{
+	ReadUntilIterator copy(*this);
+	Next();
+	return copy;
+}
+
+void Parse::ReadUntilIterator::Next()
+{
+	assert((Current == 0) || (Current != Terminal));
+	int c = PuzzleInput::GetChar();
+	Current = static_cast<char>(c);
+}
+
+Parse::ReadUntilRange::ReadUntilRange()
+	: Terminal(0)
+{
+}
+
+Parse::ReadUntilRange::ReadUntilRange(char terminal)
+	: Terminal(terminal)
+{
+}
+
+Parse::ReadUntilIterator Parse::ReadUntilRange::begin() const
+{
+	return ReadUntilIterator{ Terminal };
+}
+
+Parse::ReadUntilIterator Parse::ReadUntilRange::end() const
+{
+	return ReadUntilIterator{ Terminal, Terminal };
+}
+
+Parse::ReadUntilRange Parse::ReadUntilSeen(char terminal)
+{
+	return ReadUntilRange{ terminal };
 }
