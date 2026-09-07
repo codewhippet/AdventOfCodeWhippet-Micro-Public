@@ -35,19 +35,27 @@ namespace Puzzle25_2019_Types
 		Doors,
 		Items,
 	};
+
+	struct ExploreState
+	{
+		string CurrentRoom;
+		string CameFromRoom;
+		string DoorUsedToComeHere;
+		set<string> DoorsToExplore;
+	};
 }
 
 using namespace Puzzle25_2019_Types;
 
 #if 0
-static void InteractiveMode(Intputer* puter)
+static void InteractiveMode(uIntputer<int64_t>* puter)
 {
 	while (true)
 	{
 		puter->GetWriteQueue()->clear();
 
 		auto exec = puter->Execute();
-		assert(exec != Intputer::ExecutionResult::Exception);
+		assert(exec != uIntputerExecutionResult::Exception);
 
 		ranges::for_each(*puter->GetWriteQueue() | views::filter([](int64_t c) { return c < 256; }),
 			[](int64_t c) { putc((int)c, stdout); });
@@ -56,7 +64,7 @@ static void InteractiveMode(Intputer* puter)
 		string line;
 		getline(cin, line);
 
-		if (exec == Intputer::ExecutionResult::Finished)
+		if (exec == uIntputerExecutionResult::Finished)
 			break;
 
 		ranges::copy(line, back_inserter(*puter->GetReadQueue()));
@@ -105,70 +113,122 @@ static Room ParseRoom(const string& description)
 	return r;
 }
 
-static void Explore(IntputerWithIO puter, const string &previousRoom, const string &doorToTry, Ship *ship)
+static void Explore(uIntputerWithIO<int64_t> puter, Ship* ship)
 {
-	assert(puter.GetReadQueue()->empty());
-	assert(puter.GetWriteQueue()->empty());
-
-	if (!doorToTry.empty())
+	const map<string, string> goBack =
 	{
-		ranges::copy(doorToTry, back_inserter(*puter.GetReadQueue()));
-		puter.GetReadQueue()->push_back('\n');
-	}
+		{ "north", "south" },
+		{ "east", "west" },
+		{ "south", "north" },
+		{ "west", "east" },
+	};
 
-	auto exec = puter.Execute();
-	assert(exec != Intputer::ExecutionResult::Exception);
-	(void)exec;
+	vector<ExploreState> explorationQueue;
+	explorationQueue.push_back({});
 
-	string output;
-	ranges::copy(*puter.GetWriteQueue() | views::transform([](int64_t c) { return (char)c; }), back_inserter(output));
-	puter.GetWriteQueue()->clear();
-
-	Room newRoom = ParseRoom(output);
-	assert(newRoom.Items.size() < 2);
-
-	if (ship->Rooms.empty())
+	while (explorationQueue.empty() == false)
 	{
-		ship->StartingRoom = newRoom.Id;
-	}
+		ExploreState& current = explorationQueue.back();
 
-	if (newRoom.Id == previousRoom)
-	{
-		// The finishing room won't allow you to progress without the right item
-		ship->Goal = { newRoom.Id, doorToTry };
-	}
-	else
-	{
-		ship->Neighbours[previousRoom].insert(newRoom.Id);
-		ship->DoorToUse[{ previousRoom, newRoom.Id }] = doorToTry;
-	}
-
-	if (ship->Rooms.insert({ newRoom.Id, newRoom }).second)
-	{
-		ranges::copy(newRoom.Items
-			| views::transform([&](const string& s) -> pair<string, string>
-				{
-					return { s, newRoom.Id };
-				}),
-			inserter(ship->ItemLocations, ship->ItemLocations.end()));
-
-		for (const string& door : newRoom.Doors)
+		// Move to the room and get the room details if needed
+		if (current.CurrentRoom.empty())
 		{
-			Explore(puter, newRoom.Id, door, ship);
+			if (!current.DoorUsedToComeHere.empty())
+			{
+				ranges::copy(current.DoorUsedToComeHere, back_inserter(*puter.GetReadQueue()));
+				puter.GetReadQueue()->push_back('\n');
+			}
+
+			auto exec = puter.Execute();
+			assert(exec != uIntputerExecutionResult::Exception);
+			(void)exec;
+
+			string output;
+			ranges::copy(*puter.GetWriteQueue() | views::transform([](int64_t c) { return (char)c; }), back_inserter(output));
+			puter.GetWriteQueue()->clear();
+
+			Room newRoom = ParseRoom(output);
+			assert(newRoom.Items.size() < 2);
+
+			current.CurrentRoom = newRoom.Id;
+
+			if (ship->Rooms.empty())
+			{
+				ship->StartingRoom = newRoom.Id;
+			}
+
+			if (newRoom.Id == current.CameFromRoom)
+			{
+				// The finishing room won't allow you to progress without the right item
+				ship->Goal = { newRoom.Id, current.DoorUsedToComeHere };
+			}
+			else
+			{
+				ship->Neighbours[current.CameFromRoom].insert(newRoom.Id);
+				ship->DoorToUse[{ current.CameFromRoom, newRoom.Id }] = current.DoorUsedToComeHere;
+			}
+
+			if (ship->Rooms.insert({ newRoom.Id, newRoom }).second)
+			{
+				// New room, record the details
+				ranges::copy(newRoom.Items
+					| views::transform([&](const string& s) -> pair<string, string>
+						{
+							return { s, newRoom.Id };
+						}),
+					inserter(ship->ItemLocations, ship->ItemLocations.end()));
+
+				ranges::copy(newRoom.Doors, inserter(current.DoorsToExplore, current.DoorsToExplore.begin()));
+			}
+			else
+			{
+				// Room that we've seen before, don't bother exploring.
+				// Should happen by default because we haven't populated current.DoorsToExplore
+			}
 		}
+
+		// Have we finished exploring all of the doors from this room?
+		if (current.DoorsToExplore.empty())
+		{
+			// Go back the way we came (if we did indeed transition rooms)
+			if ((current.CurrentRoom != current.CameFromRoom) && (goBack.contains(current.DoorUsedToComeHere)))
+			{
+				ranges::copy(goBack.at(current.DoorUsedToComeHere), back_inserter(*puter.GetReadQueue()));
+				puter.GetReadQueue()->push_back('\n');
+
+				auto exec = puter.Execute();
+				assert(exec != uIntputerExecutionResult::Exception);
+				(void)exec;
+
+				string output;
+				ranges::copy(*puter.GetWriteQueue() | views::transform([](int64_t c) { return (char)c; }), back_inserter(output));
+				puter.GetWriteQueue()->clear();
+			}
+
+			explorationQueue.pop_back();
+			continue;
+		}
+
+		// Next room to explore
+		ExploreState nextState;
+		nextState.CameFromRoom = current.CurrentRoom;
+		nextState.DoorUsedToComeHere = *current.DoorsToExplore.begin();
+		current.DoorsToExplore.erase(current.DoorsToExplore.begin());
+
+		explorationQueue.push_back(nextState);
 	}
 }
 
 static vector<string> PlanRouteToRoom(const Ship& ship, const string &from, const string &to)
 {
-	vector<pair<string, int64_t>> searchQueue{ { from, -1 } };
+	vector<pair<string, int32_t>> searchQueue{ { from, -1 } };
 	set<string> visited;
-	for (size_t searchNode = 0; searchNode < searchQueue.size(); searchNode++)
+	for (int32_t searchNode = 0; searchNode < static_cast<int32_t>(searchQueue.size()); searchNode++)
 	{
 		auto [currentRoom, cameFrom] = searchQueue[searchNode];
 		if (currentRoom == to)
 		{
-			vector<int64_t> route;
+			vector<int32_t> route;
 			route.push_back(searchNode);
 			while (cameFrom != -1)
 			{
@@ -198,7 +258,7 @@ static vector<string> PlanRouteToRoom(const Ship& ship, const string &from, cons
 	return {};
 }
 
-static pair<Intputer::ExecutionResult, string> ExecuteStep(IntputerWithIO* puter, const string& instruction)
+static pair<uIntputerExecutionResult, string> ExecuteStep(uIntputerWithIO<int64_t>* puter, const string& instruction)
 {
 	assert(puter->GetReadQueue()->empty());
 	assert(puter->GetWriteQueue()->empty());
@@ -206,23 +266,24 @@ static pair<Intputer::ExecutionResult, string> ExecuteStep(IntputerWithIO* puter
 	ranges::copy(instruction, back_inserter(*puter->GetReadQueue()));
 	puter->GetReadQueue()->push_back('\n');
 
-	auto exec = puter->Execute(1000000);
+	auto exec = puter->Execute(100000, 1 * 1024);
 
 	string output;
-	if (exec == Intputer::ExecutionResult::Exception)
+	if (exec == uIntputerExecutionResult::Exception)
 	{
 		output = "*** EXCEPTION ***";
 	}
 	else
 	{
 		ranges::copy(*puter->GetWriteQueue() | views::transform([](int64_t c) { return (char)c; }), back_inserter(output));
-		puter->GetWriteQueue()->clear();
 	}
+
+	puter->GetWriteQueue()->clear();
 
 	return { exec, output };
 }
 
-static bool IsBoobyTrap(IntputerWithIO puter, const Ship& ship, const string item)
+static bool IsBoobyTrap(uIntputerWithIO<int64_t> puter, const Ship& ship, const string item)
 {
 	ranges::for_each(PlanRouteToRoom(ship, ship.StartingRoom, ship.ItemLocations.at(item)),
 		[&](const string& inst)
@@ -231,23 +292,23 @@ static bool IsBoobyTrap(IntputerWithIO puter, const Ship& ship, const string ite
 		});
 	auto [exec, output] = ExecuteStep(&puter, "take " + item);
 
-	return (exec == Intputer::ExecutionResult::Exception) || (output.find("Command?"sv) == string::npos);
+	return (exec == uIntputerExecutionResult::Exception) || (output.find("Command?"sv) == string::npos);
 }
 
-static string TryGoal(IntputerWithIO *puter, const string &goalDoor, const vector<string>& instructions)
+static string TryGoal(uIntputerWithIO<int64_t>* puter, const string &goalDoor, const vector<string>& instructions)
 {
 	for (const string& inst : instructions)
 	{
 		auto [exec, output] = ExecuteStep(puter, inst);
 		assert(puter->GetReadQueue()->empty());
-		assert(exec == Intputer::ExecutionResult::PendingIo);
+		assert(exec == uIntputerExecutionResult::PendingIo);
 		(void)exec;
 		(void)output;
 	}
 
 	{
 		auto [exec, output] = ExecuteStep(puter, goalDoor);
-		assert(exec != Intputer::ExecutionResult::Exception);
+		assert(exec != uIntputerExecutionResult::Exception);
 		(void)exec;
 
 		if (output.find("Command?"sv) == string::npos)
@@ -263,7 +324,7 @@ static string TryGoal(IntputerWithIO *puter, const string &goalDoor, const vecto
 	return {};
 }
 
-static string TryCombination(IntputerWithIO puter, const Ship& ship, const set<string>& items)
+string TryCombination(uIntputerWithIO<int64_t> puter, const Ship& ship, const set<string>& items)
 {
 	vector<string> instructions;
 
@@ -280,18 +341,14 @@ static string TryCombination(IntputerWithIO puter, const Ship& ship, const set<s
 	return TryGoal(&puter, ship.Goal.second, instructions);
 }
 
-static void Puzzle25_A(const string &filename)
+void Puzzle25_A_2019()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	IntputerWithIO puter(input);
+	uIntputerWithIO<int64_t> puter(5 * 1024);
 
 	//InteractiveMode(&puter);
 
 	Ship ship;
-	Explore(puter, {}, {}, &ship);
+	Explore(puter, &ship);
 
 	vector<string> allItems;
 	ranges::copy(views::join(ship.Rooms | views::values | views::transform([](const auto& r) { return r.Items; })), back_inserter(allItems));
@@ -319,18 +376,10 @@ static void Puzzle25_A(const string &filename)
 			break;
 	}
 
-	printf("[2019] Puzzle25_A: %s\n", answer.c_str());
-}
-
-void Puzzle25_A_2019()
-{
-	Puzzle25_A(R"(z:\AoCInput\2019\Puzzle25.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2019, 25, 1, answer);
+	PuzzleOutput::Submit(2019, 25, 1, answer.c_str());
 }
 
 void Puzzle25_B_2019()
 {
-	return PuzzleOutput::Submit(2018, 25, 2, int32_t(-1));
+	return PuzzleOutput::Submit(2018, 25, 2, int64_t(-1));
 }
