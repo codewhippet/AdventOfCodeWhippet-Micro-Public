@@ -350,9 +350,15 @@ static void Puzzle19_B(const string& filename)
 void Puzzle19_A_2020()
 {
 	Puzzle19_A(R"(z:\AoCInput\2020\Puzzle19.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2020, 19, 1, answer);
 }
 
 void Puzzle19_B_2020()
 {
 	Puzzle19_B(R"(z:\AoCInput\2020\Puzzle19.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2020, 19, 2, answer);
 }

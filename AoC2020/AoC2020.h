@@ -1,5 +1,6 @@
 #pragma once
 
-#include <string>
+#include <utility>
 
-void SolveAllPuzzles_2020(const std::string &directoryName);
+extern const std::pair<void(*)(), void(*)()> PuzzleTable_2020[];
+extern const std::size_t PuzzleTableCount_2020;

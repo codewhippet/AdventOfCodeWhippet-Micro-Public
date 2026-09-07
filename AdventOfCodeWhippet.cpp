@@ -3,6 +3,7 @@
 #include "AoC2017/AoC2017.h"
 #include "AoC2018/AoC2018.h"
 #include "AoC2019/AoC2019.h"
+#include "AoC2020/AoC2020.h"
 #include <MicroUtils.h>
 #include <string>
 #include <vector>
@@ -17,8 +18,8 @@
 #include <malloc.h>
 #endif
 
-#define ENABLE_TIMING 1
-#define ENABLE_MEMORY_WATERMARK 1
+#define ENABLE_TIMING 0
+#define ENABLE_MEMORY_WATERMARK 0
 #define ENABLE_ALLOCATION_CHECK 1
 
 enum class OperatingMode
@@ -43,6 +44,7 @@ static const Puzzles PuzzleTables[] =
 	{ 2017, &PuzzleTableCount_2017, PuzzleTable_2017 },
 	{ 2018, &PuzzleTableCount_2018, PuzzleTable_2018 },
 	{ 2019, &PuzzleTableCount_2019, PuzzleTable_2019 },
+	{ 2020, &PuzzleTableCount_2020, PuzzleTable_2020 },
 };
 
 #if ENABLE_MEMORY_WATERMARK && _WIN32

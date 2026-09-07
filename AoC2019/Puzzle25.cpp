@@ -381,5 +381,5 @@ void Puzzle25_A_2019()
 
 void Puzzle25_B_2019()
 {
-	return PuzzleOutput::Submit(2018, 25, 2, int64_t(-1));
+	return PuzzleOutput::Submit(2019, 25, 2, int64_t(-1));
 }
