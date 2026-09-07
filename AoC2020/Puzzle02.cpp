@@ -2,76 +2,60 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle02_2020_Types
 {
 }
 
 using namespace Puzzle02_2020_Types;
 
-
-static void Puzzle02_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const regex format(R"((\d+)-(\d+) (\w): (\w+))");
-
-	int64_t answer = MakeEnumerator(ReadAllLines(input))
-		->Where([&format](const string& s)
-			{
-				smatch m;
-				regex_match(s, m, format);
-				int minRepeats = stoi(m[1].str());
-				int maxRepeats = stoi(m[2].str());
-				string password = m[4].str();
-				int64_t numRepeats = count(password.begin(), password.end(), m[3].str()[0]);
-				return (numRepeats >= minRepeats) && (numRepeats <= maxRepeats);
-			})
-		->Count();
-
-	printf("[2020] Puzzle02_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle02_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const regex format(R"((\d+)-(\d+) (\w): (\w+))");
-
-	int64_t answer = MakeEnumerator(ReadAllLines(input))
-		->Where([&format](const string& s)
-			{
-				smatch m;
-				regex_match(s, m, format);
-				int posOne = stoi(m[1].str()) - 1;
-				int posTwo = stoi(m[2].str()) - 1;
-				string password = m[4].str();
-				char c = m[3].str()[0];
-				return (password[posOne] == c) ^ (password[posTwo] == c);
-			})
-		->Count();
-
-	printf("[2020] Puzzle02_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle02_A_2020()
 {
-	Puzzle02_A(R"(z:\AoCInput\2020\Puzzle02.txt)");
-
 	int32_t answer = 0;
+
+	char line[32];
+	while (PuzzleInput::NextLine())
+	{
+		int32_t minRepeats = Parse::GetUint32();
+		int32_t maxRepeats = Parse::GetUint32();
+		PuzzleInput::DropChar();
+		int needle = PuzzleInput::GetChar();
+
+		PuzzleInput::DropChar();
+		PuzzleInput::DropChar();
+
+		Parse::ReadNonEmptyLine(line);
+
+		int32_t numRepeats = 0;
+		for (const char* c = &line[0]; *c; c++)
+		{
+			numRepeats += (*c == needle);
+		}
+
+		answer += (numRepeats >= minRepeats) && (numRepeats <= maxRepeats);
+	}
+
 	PuzzleOutput::Submit(2020, 2, 1, answer);
 }
 
 void Puzzle02_B_2020()
 {
-	Puzzle02_B(R"(z:\AoCInput\2020\Puzzle02.txt)");
-
 	int32_t answer = 0;
+
+	char line[32];
+	while (PuzzleInput::NextLine())
+	{
+		int32_t posOne = Parse::GetUint32() - 1;
+		int32_t posTwo = Parse::GetUint32() - 1;
+		PuzzleInput::DropChar();
+		int needle = PuzzleInput::GetChar();
+
+		PuzzleInput::DropChar();
+		PuzzleInput::DropChar();
+
+		Parse::ReadNonEmptyLine(line);
+
+		answer += (line[posOne] == needle) ^ (line[posTwo] == needle);
+	}
+
 	PuzzleOutput::Submit(2020, 2, 2, answer);
 }
