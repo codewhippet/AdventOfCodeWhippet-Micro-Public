@@ -368,7 +368,7 @@ void uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::WriteParam(REGISTER_TYPE parame
 }
 
 template<typename REGISTER_TYPE, typename VECTOR_ALLOCATOR>
-uIntputerExecutionResult uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::Execute(REGISTER_TYPE breakAfter)
+uIntputerExecutionResult uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::Execute(REGISTER_TYPE breakAfter, size_t maxWrite)
 {
 	REGISTER_TYPE instructionsExecuted = 0;
 	while (true)
@@ -423,6 +423,9 @@ uIntputerExecutionResult uIntputer<REGISTER_TYPE, VECTOR_ALLOCATOR>::Execute(REG
 		case 4:
 			{
 				if (WriteQueue == nullptr)
+					return uIntputerExecutionResult::Exception;
+
+				if (WriteQueue->size() == maxWrite)
 					return uIntputerExecutionResult::Exception;
 
 				REGISTER_TYPE a = ReadParam(Program[PC + 1], param1Mode);

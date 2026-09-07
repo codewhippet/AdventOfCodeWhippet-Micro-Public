@@ -109,7 +109,7 @@ public:
 	void CopyProgram(const std::vector<REGISTER_TYPE>& program);
 	void Reset(const std::vector<REGISTER_TYPE>& program);
 
-	uIntputerExecutionResult Execute(REGISTER_TYPE breakAfter = std::numeric_limits<REGISTER_TYPE>::max());
+	uIntputerExecutionResult Execute(REGISTER_TYPE breakAfter = std::numeric_limits<REGISTER_TYPE>::max(), size_t maxWrite = std::numeric_limits<size_t>::max());
 
 	std::deque<REGISTER_TYPE>* GetReadQueue();
 	std::deque<REGISTER_TYPE>* GetWriteQueue();
