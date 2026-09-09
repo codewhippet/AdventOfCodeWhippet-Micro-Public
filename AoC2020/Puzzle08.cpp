@@ -2,159 +2,123 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle08_2020_Types
 {
-	const int kNOP = 0;
-	const int kACC = 1;
-	const int kJMP = 2;
+	enum class Inst : int32_t
+	{
+		Nop,
+		Acc,
+		Jmp,
+	};
 }
 
 using namespace Puzzle08_2020_Types;
 
-static vector<pair<int, int>> ReadProgram(istream& input)
+static vector<pair<Inst, int32_t>> ReadProgram()
 {
-	return MakeEnumerator(ReadAllLines(input))
-		->Select<pair<int, int>>([](const string& line)
-			{
-				char operation[4];
-				pair<int, int> opcode;
-				sscanf(line.c_str(), "%s %d", operation, &opcode.second);
-				if (strcmp(operation, "nop") == 0)
-				{
-					opcode.first = kNOP;
-				}
-				else if (strcmp(operation, "acc") == 0)
-				{
-					opcode.first = kACC;
-				}
-				else
-				{
-					assert(strcmp(operation, "jmp") == 0);
-					opcode.first = kJMP;
-				}
-				return opcode;
-			})
-		->ToVector();
+	vector<pair<Inst, int32_t>> program;
+	program.reserve(1024);
+
+	while (PuzzleInput::NextLine())
+	{
+		switch (PuzzleInput::GetChar())
+		{
+		case 'n':
+			program.push_back({ Inst::Nop, Parse::GetInt32() });
+			break;
+		case 'a':
+			program.push_back({ Inst::Acc, Parse::GetInt32() });
+			break;
+		case 'j':
+			program.push_back({ Inst::Jmp, Parse::GetInt32() });
+			break;
+		}
+	}
+
+	return program;
 }
 
-static bool RunsToCompletion(const vector<pair<int, int>>& program, int64_t* accOut)
+static bool RunsToCompletion(const vector<pair<Inst, int32_t>>& program, int32_t* accOut)
 {
-	set<size_t> executed;
+	vector<int32_t> executed(program.size());
 
-	int64_t acc = 0;
+	int32_t acc = 0;
 	size_t pc = 0;
 
 	while (true)
 	{
-		if (executed.contains(pc))
-		{
-			return false;
-		}
-
 		if (pc == program.size())
 		{
 			*accOut = acc;
 			return true;
 		}
 
+		if (executed[pc])
+		{
+			*accOut = acc;
+			return false;
+		}
+
 		assert(pc < program.size());
 
-		executed.insert(pc);
+		executed[pc] = 1;
 
 		switch (program[pc].first)
 		{
-		case kNOP:
+			case Inst::Nop:
 			pc++;
 			break;
 
-		case kACC:
+		case Inst::Acc:
 			acc += program[pc].second;
 			pc++;
 			break;
 
-		case kJMP:
+		case Inst::Jmp:
 			pc += program[pc].second;
 			break;
 		}
 	};
 }
 
-static void Puzzle08_A(const string &filename)
+void Puzzle08_A_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<pair<Inst, int32_t>> program = ReadProgram();
 
-	vector<pair<int, int>> program = ReadProgram(input);
+	int32_t acc = 0;
+	bool shouldFail = RunsToCompletion(program, &acc);
+	assert(shouldFail == false);
+	(void)shouldFail;
 
-	set<size_t> executed;
+	int32_t answer = acc;
 
-	int64_t acc = 0;
-	size_t pc = 0;
-
-	int64_t answer = 0;
-	while (true)
-	{
-		if (executed.contains(pc))
-		{
-			answer = acc;
-			break;
-		}
-
-		executed.insert(pc);
-
-		switch (program[pc].first)
-		{
-		case kNOP:
-			pc++;
-			break;
-
-		case kACC:
-			acc += program[pc].second;
-			pc++;
-			break;
-
-		case kJMP:
-			pc += program[pc].second;
-			break;
-		}
-	};
-
-	printf("[2020] Puzzle08_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2020, 8, 1, answer);
 }
 
-static void Puzzle08_B(const string& filename)
+void Puzzle08_B_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<pair<Inst, int32_t>> program = ReadProgram();
 
-	vector<pair<int, int>> program = ReadProgram(input);
-
-	int64_t answer = 0;
-
+	int32_t answer = 0;
 	for (size_t i = 0; i < program.size(); i++)
 	{
-		if (program[i].first == kACC)
+		if (program[i].first == Inst::Acc)
 			continue;
 
-		int stash;
-		if (program[i].first == kNOP)
+		Inst stash;
+		if (program[i].first == Inst::Nop)
 		{
-			program[i].first = kJMP;
-			stash = kNOP;
+			program[i].first = Inst::Jmp;
+			stash = Inst::Nop;
 		}
 		else
 		{
-			assert(program[i].first == kJMP);
-			program[i].first = kNOP;
-			stash = kJMP;
+			assert(program[i].first == Inst::Jmp);
+			program[i].first = Inst::Nop;
+			stash = Inst::Jmp;
 		}
 
-		int64_t acc;
+		int32_t acc;
 		if (RunsToCompletion(program, &acc))
 		{
 			answer = acc;
@@ -164,21 +128,5 @@ static void Puzzle08_B(const string& filename)
 		program[i].first = stash;
 	}
 
-	printf("[2020] Puzzle08_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle08_A_2020()
-{
-	Puzzle08_A(R"(z:\AoCInput\2020\Puzzle08.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 8, 1, answer);
-}
-
-void Puzzle08_B_2020()
-{
-	Puzzle08_B(R"(z:\AoCInput\2020\Puzzle08.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 8, 2, answer);
 }
