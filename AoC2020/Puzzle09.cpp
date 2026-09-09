@@ -2,40 +2,42 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle09_2020_Types
 {
 }
 
 using namespace Puzzle09_2020_Types;
 
-static vector<int64_t> ReadPuzzle(istream& input)
+static vector<uint32_t> ReadPuzzle()
 {
-	return MakeEnumerator(ReadAllLines(input))
-		->Select<int64_t>([](const string& line) { return stoll(line); })
-		->ToVector();
+	// Smidge of 'cheating' here: the numbers go into 64-bit range, but we know the answer will lie
+	// withing the 32-bit range.
+	vector<uint32_t> puzzle;
+	puzzle.reserve(1024);
+
+	while (PuzzleInput::NextLine())
+	{
+		puzzle.push_back(Parse::GetUint32());
+	}
+
+	return puzzle;
 }
 
-static int64_t FirstEncodingError(const vector<int64_t>& puzzle)
+static int32_t FirstEncodingError(const vector<uint32_t>& puzzle)
 {
 	const size_t windowSize = 25;
+	array<uint32_t, windowSize> window = {};
 
-	deque<int64_t> window;
-	set<int64_t> previous;
-
+	HashSet<uint32_t> previous(64, numeric_limits<uint32_t>::max());
 	for (size_t i = 0; i < puzzle.size(); i++)
 	{
-		if (window.size() == windowSize)
+		if (i >= windowSize)
 		{
-			assert(previous.size() == windowSize);
-
 			bool isSum = false;
-			for (int64_t a : window)
+			for (int32_t a : window)
 			{
-				int64_t b = puzzle[i] - a;
-				if (previous.contains(b))
+				int32_t b = puzzle[i] - a;
+				if (previous.Contains(b))
 				{
 					isSum = true;
 					break;
@@ -46,43 +48,32 @@ static int64_t FirstEncodingError(const vector<int64_t>& puzzle)
 				return puzzle[i];
 			}
 
-			previous.erase(window.front());
-			window.pop_front();
+			previous.Erase(window[i % 25]);
 		}
 
-		window.push_back(puzzle[i]);
-		previous.insert(puzzle[i]);
+		window[i % 25] = puzzle[i];
+		previous.Insert(puzzle[i]);
 	}
 
 	return -1;
 }
 
-static void Puzzle09_A(const string &filename)
+void Puzzle09_A_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<uint32_t> puzzle = ReadPuzzle();
+	int32_t answer = FirstEncodingError(puzzle);
 
-	vector<int64_t> puzzle = ReadPuzzle(input);
-
-	int64_t answer = FirstEncodingError(puzzle);
-
-	printf("[2020] Puzzle09_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2020, 9, 1, answer);
 }
 
-static void Puzzle09_B(const string& filename)
+void Puzzle09_B_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> puzzle = ReadPuzzle(input);
-
-	const int64_t kTARGET = FirstEncodingError(puzzle);
+	vector<uint32_t> puzzle = ReadPuzzle();
+	const uint32_t target = FirstEncodingError(puzzle);
 
 	size_t i = 0;
 	size_t j = 0;
-	int64_t runningSum = 0;
+	uint32_t runningSum = 0;
 
 	while (true)
 	{
@@ -90,48 +81,29 @@ static void Puzzle09_B(const string& filename)
 		assert(i < puzzle.size());
 		assert(j < puzzle.size());
 
-		if (runningSum == kTARGET)
+		if (runningSum == target)
 		{
 			break;
 		}
 
-		if (runningSum < kTARGET)
+		if (runningSum < target)
 		{
 			runningSum += puzzle[j++];
 		}
 		else
 		{
-			assert(runningSum > kTARGET);
+			assert(runningSum > target);
 			runningSum -= puzzle[i++];
 		}
 	}
 
-	int64_t smallest = numeric_limits<int64_t>::max();
-	int64_t largest = numeric_limits<int64_t>::min();
-
+	MinMaxValues<int32_t> range;
 	for (/***/; i < j; i++)
 	{
-		smallest = min(smallest, puzzle[i]);
-		largest = max(largest, puzzle[i]);
+		range.Update(static_cast<int32_t>(puzzle[i]));
 	}
 
-	int64_t answer = smallest + largest;
+	int32_t answer = range.GetMin() + range.GetMax();
 
-	printf("[2020] Puzzle09_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle09_A_2020()
-{
-	Puzzle09_A(R"(z:\AoCInput\2020\Puzzle09.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 9, 1, answer);
-}
-
-void Puzzle09_B_2020()
-{
-	Puzzle09_B(R"(z:\AoCInput\2020\Puzzle09.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 9, 2, answer);
 }
