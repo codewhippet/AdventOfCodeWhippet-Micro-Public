@@ -230,6 +230,18 @@ void Parse::ReadNonEmptyLine(char* dest, size_t bufferSize)
 	(void)lineLength;
 }
 
+void Parse::DiscardExpected(const char * expected)
+{
+	while (*expected)
+	{
+		int c = PuzzleInput::GetChar();
+		assert(c == *expected);
+		(void)c;
+
+		expected++;
+	}
+}
+
 // ----------------------------------------------------------------------------
 
 void Parse::ReadAsVectorOfNumbers(const char* line, std::vector<int32_t>* out)

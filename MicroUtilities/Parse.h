@@ -36,6 +36,8 @@ namespace Parse
 		ReadNonEmptyLine(dest, N);
 	}
 
+	void DiscardExpected(const char* expected);
+
 // ----------------------------------------------------------------------------
 
 	void ReadAsVectorOfNumbers(const char* line, std::vector<int32_t>* out);
