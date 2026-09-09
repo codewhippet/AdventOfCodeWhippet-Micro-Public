@@ -2,42 +2,23 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle10_2020_Types
 {
 }
 
 using namespace Puzzle10_2020_Types;
 
-static vector<int64_t> ReadPuzzle(istream& input)
+static int64_t CountArrangements(const vector<int64_t>& puzzle)
 {
-	return MakeEnumerator(ReadAllLines(input))
-		->Select<int64_t>([](const string& line) { return stoll(line); })
-		->ToVector();
-}
+	vector<int64_t> dp(puzzle.size());
+	dp.back() = 1;
 
-static int64_t CountArrangements(const vector<int64_t>& puzzle, size_t pos, map<size_t, int64_t>& cache)
-{
-	assert(pos < puzzle.size());
-
-	map<size_t, int64_t>::const_iterator cacheHit = cache.find(pos);
-	if (cacheHit != cache.end())
+	for (int64_t pos = puzzle.size() - 2; pos >= 0; pos--)
 	{
-		return cacheHit->second;
-	}
+		int64_t arrangements = 0;
 
-	int64_t arrangements = 0;
-
-	if (pos == puzzle.size() - 1)
-	{
-		arrangements = 1;
-	}
-	else
-	{
 		// Look for the next valid adapter
-		for (int64_t offset = 1; pos + offset < puzzle.size(); offset++)
+		for (int64_t offset = 1; pos + offset < (int64_t)puzzle.size(); offset++)
 		{
 			int64_t diff = puzzle[pos + offset] - puzzle[pos];
 			if (diff > 3)
@@ -45,30 +26,33 @@ static int64_t CountArrangements(const vector<int64_t>& puzzle, size_t pos, map<
 				break;
 			}
 
-			arrangements += CountArrangements(puzzle, pos + offset, cache);
+			arrangements += dp[pos + offset];
 		}
+
+		dp[pos] = arrangements;
 	}
 
-	cache[pos] = arrangements;
-	return arrangements;
+	return dp.front();
 }
 
-static void Puzzle10_A(const string &filename)
+void Puzzle10_A_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<int32_t> puzzle;
+	puzzle.reserve(128);
+	while (PuzzleInput::NextLine())
+	{
+		puzzle.push_back(Parse::GetInt32());
+	}
 
-	vector<int64_t> puzzle = ReadPuzzle(input);
 	puzzle.push_back(0);
 	sort(puzzle.begin(), puzzle.end());
 	puzzle.push_back(puzzle.back() + 3);
 
-	int64_t singleDiffs = 0;
-	int64_t tripleDiffs = 0;
+	int32_t singleDiffs = 0;
+	int32_t tripleDiffs = 0;
 	for (size_t i = 0; i + 1 < puzzle.size(); i++)
 	{
-		int64_t diff = puzzle[i + 1] - puzzle[i];
+		int32_t diff = puzzle[i + 1] - puzzle[i];
 		if (diff == 1)
 		{
 			singleDiffs++;
@@ -79,40 +63,25 @@ static void Puzzle10_A(const string &filename)
 		}
 	}
 
-	int64_t answer = singleDiffs * tripleDiffs;
+	int32_t answer = singleDiffs * tripleDiffs;
 
-	printf("[2020] Puzzle10_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle10_B(const string& filename)
-{
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> puzzle = ReadPuzzle(input);
-	puzzle.push_back(0);
-	sort(puzzle.begin(), puzzle.end());
-	puzzle.push_back(puzzle.back() + 3);
-
-	map<size_t, int64_t> cache;
-
-	int64_t answer = CountArrangements(puzzle, 0, cache);
-
-	printf("[2020] Puzzle10_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle10_A_2020()
-{
-	Puzzle10_A(R"(z:\AoCInput\2020\Puzzle10.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 10, 1, answer);
 }
 
 void Puzzle10_B_2020()
 {
-	Puzzle10_B(R"(z:\AoCInput\2020\Puzzle10.txt)");
+	vector<int64_t> puzzle;
+	puzzle.reserve(128);
+	while (PuzzleInput::NextLine())
+	{
+		puzzle.push_back(Parse::GetInt64());
+	}
 
-	int32_t answer = 0;
+	puzzle.push_back(0);
+	sort(puzzle.begin(), puzzle.end());
+	puzzle.push_back(puzzle.back() + 3);
+
+	int64_t answer = CountArrangements(puzzle);
+
 	PuzzleOutput::Submit(2020, 10, 2, answer);
 }
