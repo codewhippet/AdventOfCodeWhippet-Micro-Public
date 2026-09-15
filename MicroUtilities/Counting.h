@@ -12,6 +12,11 @@ public:
 	{
 	}
 
+	explicit MinValue(const VALUE_TYPE& startingValue)
+		: Value(startingValue)
+	{
+	}
+
 	void Update(VALUE_TYPE newValue)
 	{
 		if (newValue < Value)
@@ -40,6 +45,11 @@ class MaxValue
 public:
 	MaxValue()
 		: Value(std::numeric_limits<VALUE_TYPE>::min())
+	{
+	}
+
+	explicit MaxValue(const VALUE_TYPE& startingValue)
+		: Value(startingValue)
 	{
 	}
 
