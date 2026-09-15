@@ -77,6 +77,8 @@ uArrayMap2D::uArrayMap2D(uArrayMap2D&& other) noexcept
 
 uArrayMap2D::uArrayMap2D(uArrayMap2DOptions options, const uArrayMap2D& other)
 {
+	m_allocator = other.m_allocator;
+
 	m_origin = other.m_origin;
 	m_width = other.m_width;
 	m_height = other.m_height;
