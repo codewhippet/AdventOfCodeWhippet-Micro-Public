@@ -2,138 +2,138 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle12_2020_Types
 {
-	struct Ferry
-	{
-		Point2 Position;
-		Point2 Heading;
-	};
-
-	struct Ferry2
-	{
-		Point2 Position;
-		Point2 Waypoint;
-	};
 }
 
 using namespace Puzzle12_2020_Types;
 
-static map<string, function<void(Ferry*)>> MakeMovements()
-{
-	map<string, function<void(Ferry *)>> movements;
-
-	movements["R90"] = [](Ferry* f) { f->Heading = Point2{ f->Heading.Y, -f->Heading.X }; };
-	movements["R180"] = [](Ferry* f) { f->Heading = Point2{ -f->Heading.X, -f->Heading.Y }; };
-	movements["R270"] = [](Ferry* f) { f->Heading = Point2{ -f->Heading.Y, f->Heading.X }; };
-
-	movements["L90"] = movements["R270"];
-	movements["L180"] = movements["R180"];
-	movements["L270"] = movements["R90"];
-
-	for (int i = 1; i <= 100; i++)
-	{
-		movements["N" + to_string(i)] = [i](Ferry* f) { f->Position.Y += i; };
-		movements["S" + to_string(i)] = [i](Ferry* f) { f->Position.Y -= i; };
-		movements["E" + to_string(i)] = [i](Ferry* f) { f->Position.X += i; };
-		movements["W" + to_string(i)] = [i](Ferry* f) { f->Position.X -= i; };
-
-		movements["F" + to_string(i)] = [i](Ferry* f)
-		{
-			f->Position = f->Position + Point2{ f->Heading.X * i, f->Heading.Y * i };
-		};
-	}
-
-	return movements;
-}
-
-static map<string, function<void(Ferry2*)>> MakeWaypointMovements()
-{
-	map<string, function<void(Ferry2*)>> movements;
-
-	movements["R90"] = [](Ferry2* f) { f->Waypoint = Point2{ f->Waypoint.Y, -f->Waypoint.X }; };
-	movements["R180"] = [](Ferry2* f) { f->Waypoint = Point2{ -f->Waypoint.X, -f->Waypoint.Y }; };
-	movements["R270"] = [](Ferry2* f) { f->Waypoint = Point2{ -f->Waypoint.Y, f->Waypoint.X }; };
-
-	movements["L90"] = movements["R270"];
-	movements["L180"] = movements["R180"];
-	movements["L270"] = movements["R90"];
-
-	for (int i = 1; i <= 100; i++)
-	{
-		movements["N" + to_string(i)] = [i](Ferry2* f) { f->Waypoint.Y += i; };
-		movements["S" + to_string(i)] = [i](Ferry2* f) { f->Waypoint.Y -= i; };
-		movements["E" + to_string(i)] = [i](Ferry2* f) { f->Waypoint.X += i; };
-		movements["W" + to_string(i)] = [i](Ferry2* f) { f->Waypoint.X -= i; };
-
-		movements["F" + to_string(i)] = [i](Ferry2* f)
-		{
-			f->Position = f->Position + Point2{ f->Waypoint.X * i, f->Waypoint.Y * i };
-		};
-	}
-
-	return movements;
-}
-
-static void Puzzle12_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<string, function<void(Ferry*)>> movements = MakeMovements();
-
-	vector<string> instructions = ReadAllLines(input);
-
-	Ferry f = { { 0, 0 }, { 1, 0 } };
-	for (const string& instruction : instructions)
-	{
-		assert(movements.contains(instruction));
-		movements[instruction](&f);
-	}
-
-	int64_t answer = abs(f.Position.X) + abs(f.Position.Y);
-
-	printf("[2020] Puzzle12_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle12_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<string, function<void(Ferry2*)>> movements = MakeWaypointMovements();
-
-	vector<string> instructions = ReadAllLines(input);
-
-	Ferry2 f = { { 0, 0 }, { 10, 1 } };
-	for (const string& instruction : instructions)
-	{
-		assert(movements.contains(instruction));
-		movements[instruction](&f);
-	}
-
-	int64_t answer = abs(f.Position.X) + abs(f.Position.Y);
-
-	printf("[2020] Puzzle12_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle12_A_2020()
 {
-	Puzzle12_A(R"(z:\AoCInput\2020\Puzzle12.txt)");
+	Vec2Int position{};
+	Vec2Int heading = Vec2Int::East();
 
-	int32_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		int op = PuzzleInput::GetChar();
+		int32_t amount = Parse::GetInt32();
+		switch (op)
+		{
+		case 'N':
+			position += amount * Vec2Int::North();
+			break;
+		case 'S':
+			position += amount * Vec2Int::South();
+			break;
+		case 'E':
+			position += amount * Vec2Int::East();
+			break;
+		case 'W':
+			position += amount * Vec2Int::West();
+			break;
+
+		case 'L':
+			switch (amount)
+			{
+			case 90:
+				heading = Vec2Int::RotateAnticlockwise(heading);
+				break;
+			case 180:
+				heading = -heading;
+				break;
+			case 270:
+				heading = Vec2Int::RotateClockwise(heading);
+				break;
+			}
+			break;
+
+		case 'R':
+			switch (amount)
+			{
+			case 90:
+				heading = Vec2Int::RotateClockwise(heading);
+				break;
+			case 180:
+				heading = -heading;
+				break;
+			case 270:
+				heading = Vec2Int::RotateAnticlockwise(heading);
+				break;
+			}
+			break;
+
+		case 'F':
+			position = position + amount * heading;
+			break;
+		}
+	}
+
+	int32_t answer = ManhattanDistance({}, position);
+
 	PuzzleOutput::Submit(2020, 12, 1, answer);
 }
 
 void Puzzle12_B_2020()
 {
-	Puzzle12_B(R"(z:\AoCInput\2020\Puzzle12.txt)");
+	Vec2Int position{};
+	Vec2Int waypoint = (10 * Vec2Int::East()) + (1 * Vec2Int::North());
 
-	int32_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		int op = PuzzleInput::GetChar();
+		int32_t amount = Parse::GetInt32();
+		switch (op)
+		{
+		case 'N':
+			waypoint += amount * Vec2Int::North();
+			break;
+		case 'S':
+			waypoint += amount * Vec2Int::South();
+			break;
+		case 'E':
+			waypoint += amount * Vec2Int::East();
+			break;
+		case 'W':
+			waypoint += amount * Vec2Int::West();
+			break;
+
+		case 'L':
+			switch (amount)
+			{
+			case 90:
+				waypoint = Vec2Int::RotateAnticlockwise(waypoint);
+				break;
+			case 180:
+				waypoint = -waypoint;
+				break;
+			case 270:
+				waypoint = Vec2Int::RotateClockwise(waypoint);
+				break;
+			}
+			break;
+
+		case 'R':
+			switch (amount)
+			{
+			case 90:
+				waypoint = Vec2Int::RotateClockwise(waypoint);
+				break;
+			case 180:
+				waypoint = -waypoint;
+				break;
+			case 270:
+				waypoint = Vec2Int::RotateAnticlockwise(waypoint);
+				break;
+			}
+			break;
+
+		case 'F':
+			position = position + amount * waypoint;
+			break;
+		}
+	}
+
+	int32_t answer = ManhattanDistance({}, position);
+
 	PuzzleOutput::Submit(2020, 12, 2, answer);
 }
