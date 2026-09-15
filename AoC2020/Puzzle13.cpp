@@ -2,61 +2,56 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle13_2020_Types
 {
 }
 
 using namespace Puzzle13_2020_Types;
 
-
-static void Puzzle13_A(const string &filename)
+void Puzzle13_A_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	int32_t startingTime = Parse::GetInt32();
+	PuzzleInput::NextLine();
 
-	vector<string> timetable = ReadAllLines(input);
+	vector<char> timetable(256);
+	Parse::ReadNonEmptyLine(timetable.data(), timetable.size());
 
-	int64_t startingTime = stoll(timetable[0]);
+	vector<int32_t> busses;
+	busses.reserve(16);
 
-	vector<int64_t> busses;
 	const char *delims = ",x";
-	for (char* bus = strtok(const_cast<char *>(timetable[1].c_str()), delims); bus; bus = strtok(nullptr, delims))
+	for (char* bus = strtok(timetable.data(), delims); bus; bus = strtok(nullptr, delims))
 	{
-		busses.push_back(stoll(bus));
+		busses.push_back(Parse::GetInt32(bus));
 	}
 
-	vector<pair<int64_t, int64_t>> departureTimes = MakeEnumerator(busses)
-		->Select<pair<int64_t, int64_t>>([startingTime](int64_t bus)
-			{
-				int64_t timeSinceLastDeparture = startingTime % bus;
-				int64_t timeUntilNextDeparture = (bus - timeSinceLastDeparture) % bus;
-				return make_pair(startingTime + timeUntilNextDeparture, bus);
-			})
-		->ToVector();
+	MinValue<pair<int32_t, int32_t>> firstDeparture({ numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max() });
+	for (int32_t bus : busses)
+	{
+		int32_t timeSinceLastDeparture = startingTime % bus;
+		int32_t timeUntilNextDeparture = (bus - timeSinceLastDeparture) % bus;
+		firstDeparture.Update({ startingTime + timeUntilNextDeparture, bus });
+	}
 
-	pair<int64_t, int64_t> firstDeparture = MakeEnumerator(departureTimes)->Min();
+	int32_t answer = (firstDeparture.Get().first - startingTime) * firstDeparture.Get().second;
 
-	int64_t answer = (firstDeparture.first - startingTime) * firstDeparture.second;
-
-	printf("[2020] Puzzle13_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2020, 13, 1, answer);
 }
 
-static void Puzzle13_B(const string& filename)
+void Puzzle13_B_2020()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	PuzzleInput::DropLine();
+	PuzzleInput::NextLine();
 
-	vector<string> timetable = ReadAllLines(input);
+	vector<char> timetable(256);
+	Parse::ReadNonEmptyLine(timetable.data(), timetable.size());
 
 	vector<pair<int64_t, int64_t>> busses;
+	busses.reserve(16);
+
 	const char* delims = ",";
 	int64_t busConstraint = 0;
-	for (char* bus = strtok(const_cast<char*>(timetable[1].c_str()), delims); bus; bus = strtok(nullptr, delims))
+	for (char* bus = strtok(timetable.data(), delims); bus; bus = strtok(nullptr, delims))
 	{
 		if (bus[0] != 'x')
 		{
@@ -81,21 +76,5 @@ static void Puzzle13_B(const string& filename)
 
 	int64_t answer = t;
 
-	printf("[2020] Puzzle13_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle13_A_2020()
-{
-	Puzzle13_A(R"(z:\AoCInput\2020\Puzzle13.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 13, 1, answer);
-}
-
-void Puzzle13_B_2020()
-{
-	Puzzle13_B(R"(z:\AoCInput\2020\Puzzle13.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 13, 2, answer);
 }
