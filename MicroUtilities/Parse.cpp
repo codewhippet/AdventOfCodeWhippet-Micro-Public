@@ -76,6 +76,11 @@ uint32_t Parse::GetUint32()
 	return GetUint<int32_t>();
 }
 
+uint64_t Parse::GetUint64()
+{
+	return GetUint<int64_t>();
+}
+
 template <typename INT_TYPE>
 static INT_TYPE GetInt(const char* line)
 {

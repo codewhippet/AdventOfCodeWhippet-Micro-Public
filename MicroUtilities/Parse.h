@@ -13,6 +13,7 @@ namespace Parse
 	uint8_t GetUint8();
 	uint16_t GetUint16();
 	uint32_t GetUint32();
+	uint64_t GetUint64();
 
 	int16_t GetInt16(const char* line);
 	int32_t GetInt32(const char* line);
