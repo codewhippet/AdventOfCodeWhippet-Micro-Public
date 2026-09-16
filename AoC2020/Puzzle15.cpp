@@ -2,120 +2,66 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle15_2020_Types
 {
 }
 
 using namespace Puzzle15_2020_Types;
 
-static pair<int64_t, int64_t> ShiftHistory(int64_t newTurn, const pair<int64_t, int64_t>& history)
+static int32_t NthNumberSpoken(int32_t n)
 {
-	return { newTurn, history.first };
-}
+	vector<int32_t> spokenHistory;
+	spokenHistory.resize(n, -1);
 
-static void Puzzle15_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	int32_t turn = 0;
+	int32_t lastSpoken = 0;
 
-	vector<int64_t> startingNumbers = ReadAsVectorOfNumbers(ReadSingleLine(input));
-
-	map<int64_t, pair<int64_t, int64_t>> spokenHistory;
-	for (size_t i = 0; i < startingNumbers.size(); i++)
+	while (PuzzleInput::PeekChar() != '\n')
 	{
-		spokenHistory[startingNumbers[i]] = { i + 1, 0 };
+		int32_t value = Parse::GetInt32();
+		spokenHistory[value] = turn++;
+		lastSpoken = value;
 	}
 
-	int64_t lastSpokenNumber = startingNumbers.back();
-	for (int64_t i = startingNumbers.size() + 1; i <= 2020; i++)
+	spokenHistory[lastSpoken] = -1; // Pretend we haven't recorded the last spoken word yet
+
+	for (/***/; turn < n; turn++)
 	{
-		map<int64_t, pair<int64_t, int64_t>>::iterator lastSpokenIt = spokenHistory.find(lastSpokenNumber);
-		assert(lastSpokenIt != spokenHistory.end());
+		int32_t valueToSpeak = -1;
 
-		int64_t shouldSpeak;
-
-		bool wasNewNumber = lastSpokenIt->second.second == 0;
-		if (wasNewNumber)
+		int32_t lastSpokenWasSpokenBeforeAt = spokenHistory[lastSpoken];
+		if (lastSpokenWasSpokenBeforeAt == -1)
 		{
-			// Speak 0 for a new number
-			shouldSpeak = 0;
+			valueToSpeak = 0;
 		}
 		else
 		{
-			// Speak the diff
-			shouldSpeak = lastSpokenIt->second.first - lastSpokenIt->second.second;
-			assert(shouldSpeak > 0);
+			valueToSpeak = turn - lastSpokenWasSpokenBeforeAt - 1;
 		}
 
-		spokenHistory[shouldSpeak] = ShiftHistory(i, spokenHistory[shouldSpeak]);
-		lastSpokenNumber = shouldSpeak;
+		spokenHistory[lastSpoken] = turn - 1;
+		lastSpoken = valueToSpeak;
 	}
 
-	int64_t answer = lastSpokenNumber;
-
-	printf("[2020] Puzzle15_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle15_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> startingNumbers = ReadAsVectorOfNumbers(ReadSingleLine(input));
-
-	unordered_map<int64_t, pair<int64_t, int64_t>> spokenHistory;
-	for (size_t i = 0; i < startingNumbers.size(); i++)
-	{
-		spokenHistory[startingNumbers[i]] = { i + 1, 0 };
-	}
-
-	int64_t lastSpokenNumber = startingNumbers.back();
-	for (int64_t i = startingNumbers.size() + 1; i <= 30000000; i++)
-	{
-		unordered_map<int64_t, pair<int64_t, int64_t>>::iterator lastSpokenIt = spokenHistory.find(lastSpokenNumber);
-		assert(lastSpokenIt != spokenHistory.end());
-
-		int64_t shouldSpeak;
-
-		bool wasNewNumber = lastSpokenIt->second.second == 0;
-		if (wasNewNumber)
-		{
-			// Speak 0 for a new number
-			shouldSpeak = 0;
-		}
-		else
-		{
-			// Speak the diff
-			shouldSpeak = lastSpokenIt->second.first - lastSpokenIt->second.second;
-			assert(shouldSpeak > 0);
-		}
-
-		spokenHistory[shouldSpeak] = ShiftHistory(i, spokenHistory[shouldSpeak]);
-		lastSpokenNumber = shouldSpeak;
-	}
-
-	int64_t answer = lastSpokenNumber;
-
-	printf("[2020] Puzzle15_B: %" PRId64 "\n", answer);
+	return lastSpoken;
 }
 
 void Puzzle15_A_2020()
 {
-	Puzzle15_A(R"(z:\AoCInput\2020\Puzzle15.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = NthNumberSpoken(2020);
 	PuzzleOutput::Submit(2020, 15, 1, answer);
 }
 
 void Puzzle15_B_2020()
 {
-	Puzzle15_B(R"(z:\AoCInput\2020\Puzzle15.txt)");
+#if PICO_ON_DEVICE
 
-	int32_t answer = 0;
+	PuzzleOutput::Unsupported(2020, 15, 2);
+
+#else
+
+	int32_t answer = NthNumberSpoken(30000000);
 	PuzzleOutput::Submit(2020, 15, 2, answer);
+
+#endif
 }
