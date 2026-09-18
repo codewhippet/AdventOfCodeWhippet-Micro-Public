@@ -2,185 +2,255 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle17_2020_Types
 {
-}
-
-using namespace Puzzle17_2020_Types;
-
-static set<Vector3> ReadStartingConfiguration(istream& input)
-{
-	set<Vector3> config;
-
-	vector<string> lines = ReadAllLines(input);
-	for (size_t y = 0; y < lines.size(); y++)
+	struct Neighbour
 	{
-		for (size_t x = 0; x < lines[0].size(); x++)
+		uint32_t Add = 0;
+		uint32_t Sub = 0;
+	};
+
+	struct InactiveCountBuffer
+	{
+		InactiveCountBuffer(const Vec4Int& dimensions)
+			: Dimensions(dimensions)
 		{
-			if (lines[y][x] == '#')
-			{
-				config.insert({ (int64_t)x, (int64_t)y, 0 });
-			}
+			Data.resize(Dimensions.X * Dimensions.Y * Dimensions.Z * Dimensions.W);
 		}
-	}
 
-	return config;
-}
-
-static set<Vector4> ReadStartingConfiguration4D(istream& input)
-{
-	set<Vector4> config;
-
-	vector<string> lines = ReadAllLines(input);
-	for (size_t y = 0; y < lines.size(); y++)
-	{
-		for (size_t x = 0; x < lines[0].size(); x++)
+		void Increment(uint32_t pos, int8_t inc)
 		{
-			if (lines[y][x] == '#')
-			{
-				config.insert({ (int64_t)x, (int64_t)y, 0, 0 });
-			}
+			Vec4Int decodedPos;
+			decodedPos.X = (pos >> 24) & 0xff;
+			decodedPos.Y = (pos >> 16) & 0xff;
+			decodedPos.Z = (pos >> 8) & 0xff;
+			decodedPos.W = (pos >> 0) & 0xff;
+			decodedPos = decodedPos - Vec4Int{ 0x80, 0x80, 0x80, 0x80 };
+
+			assert((decodedPos.X >= 0) && (decodedPos.X < Dimensions.X));
+			assert((decodedPos.Y >= 0) && (decodedPos.Y < Dimensions.Y));
+			assert((decodedPos.Z >= 0) && (decodedPos.Z < Dimensions.Z));
+			assert((decodedPos.W >= 0) && (decodedPos.W < Dimensions.W));
+
+			size_t index =  0;
+			index += decodedPos.W;
+			index *= Dimensions.Z;
+			index += decodedPos.Z;
+			index *= Dimensions.Y;
+			index += decodedPos.Y;
+			index *= Dimensions.X;
+			index += decodedPos.X;
+
+			Data[index] += inc;
 		}
-	}
 
-	return config;
-}
-
-static vector<Vector3> Generate3DNeighbours()
-{
-	vector<Vector3> neighbours;
-	neighbours.reserve((3 * 3 * 3) - 1);
-	for (int64_t z : { -1, 0, 1 })
-	{
-		for (int64_t y : { -1, 0, 1 })
+		void Extract(HashSet<uint32_t>* next, int8_t target)
 		{
-			for (int64_t x : { -1, 0, 1 })
+			const int32_t endX = Dimensions.X + 0x80;
+			const int32_t endY = Dimensions.Y + 0x80;
+			const int32_t endZ = Dimensions.Z + 0x80;
+			const int32_t endW = Dimensions.W + 0x80;
+
+			size_t index = 0;
+			for (int32_t w = 0x80; w < endW; w++)
 			{
-				Vector3 neighbour{ x, y, z };
-				if (neighbour != Vector3{ 0, 0, 0 })
+				for (int32_t z = 0x80; z < endZ; z++)
 				{
-					neighbours.push_back({ x, y, z });
-				}
-			}
-		}
-	}
-	return neighbours;
-}
-
-static vector<Vector4> Generate4DNeighbours()
-{
-	vector<Vector4> neighbours;
-	neighbours.reserve((3 * 3 * 3 * 3) - 1);
-	for (int64_t w : { -1, 0, 1 })
-	{
-		for (int64_t z : { -1, 0, 1 })
-		{
-			for (int64_t y : { -1, 0, 1 })
-			{
-				for (int64_t x : { -1, 0, 1 })
-				{
-					Vector4 neighbour{ x, y, z, w };
-					if (neighbour != Vector4{ 0, 0, 0, 0 })
+					for (int32_t y = 0x80; y < endY; y++)
 					{
-						neighbours.push_back({ x, y, z, w });
+						for (int32_t x = 0x80; x < endX; x++)
+						{
+							int8_t count = Data[index];
+							if (count == target)
+							{
+								next->Insert((x << 24) | (y << 16) | (z << 8) | (w << 0));
+							}
+
+							index++;
+						}
 					}
 				}
 			}
 		}
+
+		void Reset()
+		{
+			ranges::fill(Data, static_cast<int8_t>(0));
+		}
+
+		Vec4Int Dimensions;
+		vector<int8_t> Data;
+	};
+}
+
+using namespace Puzzle17_2020_Types;
+
+static void ReadStartingConfiguration(HashSet<uint32_t>* config, const Vec4Int& offset)
+{
+	for (int32_t y = 0; y < numeric_limits<int32_t>::max(); y++)
+	{
+		for (int32_t x = 0; x < numeric_limits<int32_t>::max(); x++)
+		{
+			int c = PuzzleInput::GetChar();
+			if (c == EOF)
+				return;
+
+			if (c == '\n')
+				break;
+
+			if (c == '#')
+			{
+				uint32_t cell = 0x80808080;
+				cell += (offset.X + x) << 24;
+				cell += (offset.Y + y) << 16;
+				cell += (offset.Z    ) << 8;
+				cell += (offset.W    ) << 0;
+				config->Insert(cell);
+			}
+		}
+	}
+}
+
+static vector<Neighbour> Generate3DNeighbours()
+{
+	vector<Neighbour> neighbours;
+	neighbours.reserve((3 * 3 * 3) - 1);
+
+	for (int32_t z : { -1, 0, 1 })
+	{
+		for (int32_t y : { -1, 0, 1 })
+		{
+			for (int32_t x : { -1, 0, 1 })
+			{
+				if (Vec3Int{ x, y, z } == Vec3Int{})
+					continue;
+
+				Neighbour neighbour;
+
+				if (x > 0) neighbour.Add |= 1 << 24;
+				if (x < 0) neighbour.Sub |= 1 << 24;
+
+				if (y > 0) neighbour.Add |= 1 << 16;
+				if (y < 0) neighbour.Sub |= 1 << 16;
+
+				if (z > 0) neighbour.Add |= 1 << 8;
+				if (z < 0) neighbour.Sub |= 1 << 8;
+
+				neighbours.push_back(neighbour);
+			}
+		}
 	}
 	return neighbours;
 }
 
-template <typename VEC>
-static set<VEC> Step(const set<VEC> &current, const vector<VEC> &offsets)
+static vector<Neighbour> Generate4DNeighbours()
 {
-	set<VEC> next;
+	vector<Neighbour> neighbours;
+	neighbours.reserve((3 * 3 * 3 * 3) - 1);
 
-	map<VEC, int64_t> inactive;
-	for (const VEC& cube : current)
+	for (int32_t w : { -1, 0, 1 })
 	{
-		inactive[cube] += 10;
-
-		int neighbourCount = 0;
-		for (const VEC& neighbourOffset : offsets)
+		for (int32_t z : { -1, 0, 1 })
 		{
-			VEC neighbour = cube + neighbourOffset;
-			if (current.contains(neighbour))
+			for (int32_t y : { -1, 0, 1 })
+			{
+				for (int32_t x : { -1, 0, 1 })
+				{
+					if (Vec4Int{ x, y, z, w } == Vec4Int{})
+						continue;
+
+					Neighbour neighbour;
+
+					if (x > 0) neighbour.Add |= 1 << 24;
+					if (x < 0) neighbour.Sub |= 1 << 24;
+
+					if (y > 0) neighbour.Add |= 1 << 16;
+					if (y < 0) neighbour.Sub |= 1 << 16;
+
+					if (z > 0) neighbour.Add |= 1 << 8;
+					if (z < 0) neighbour.Sub |= 1 << 8;
+
+					if (w > 0) neighbour.Add |= 1 << 0;
+					if (w < 0) neighbour.Sub |= 1 << 0;
+
+					neighbours.push_back(neighbour);
+				}
+			}
+		}
+	}
+	return neighbours;
+}
+
+static void Step(const HashSet<uint32_t> &current, const vector<Neighbour> &offsets, InactiveCountBuffer* inactiveCounts, HashSet<uint32_t>* next)
+{
+	next->Reset();
+	inactiveCounts->Reset();
+
+	for (const uint32_t& cube : current)
+	{
+		inactiveCounts->Increment(cube, 10); // Make sure we don't re-activate ourselves
+
+		int32_t neighbourCount = 0;
+		for (const Neighbour& neighbourOffset : offsets)
+		{
+			uint32_t neighbour = cube + neighbourOffset.Add - neighbourOffset.Sub;
+			if (current.Contains(neighbour))
 			{
 				neighbourCount++;
 			}
-			inactive[neighbour]++;
+			inactiveCounts->Increment(neighbour, 1);
 		}
 		if ((neighbourCount == 2) || (neighbourCount == 3))
 		{
-			next.insert(cube);
+			next->Insert(cube);
 		}
 	}
 
-	for (typename map<VEC, int64_t>::const_reference inactiveCount : inactive)
-	{
-		if (inactiveCount.second == 3)
-		{
-			next.insert(inactiveCount.first);
-		}
-	}
-
-	return next;
-}
-
-static void Puzzle17_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	set<Vector3> conway = ReadStartingConfiguration(input);
-	vector<Vector3> neighbours = Generate3DNeighbours();
-
-	for (int i = 0; i < 6; i++)
-	{
-		conway = Step(conway, neighbours);
-	}
-
-	int64_t answer = conway.size();
-
-	printf("[2020] Puzzle17_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle17_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	set<Vector4> conway = ReadStartingConfiguration4D(input);
-	vector<Vector4> neighbours = Generate4DNeighbours();
-
-	for (int i = 0; i < 6; i++)
-	{
-		conway = Step(conway, neighbours);
-	}
-
-	int64_t answer = conway.size();
-
-	printf("[2020] Puzzle17_B: %" PRId64 "\n", answer);
+	inactiveCounts->Extract(next, 3);
 }
 
 void Puzzle17_A_2020()
 {
-	Puzzle17_A(R"(z:\AoCInput\2020\Puzzle17.txt)");
+	array<HashSet<uint32_t>, 2> conway =
+	{
+		HashSet<uint32_t>{ 1024, 0 },
+		HashSet<uint32_t>{ 1024, 0 }
+	};
 
-	int32_t answer = 0;
+	ReadStartingConfiguration(&conway[0], { 7, 7, 7, 0 });
+
+	InactiveCountBuffer inactiveCounts(Vec4Int{ 22, 22, 15, 1 });
+
+	vector<Neighbour> neighbours = Generate3DNeighbours();
+	for (size_t i = 0; i < 6; i++)
+	{
+		Step(conway[i & 1], neighbours, &inactiveCounts, &conway[1 - (i & 1)]);
+	}
+
+	int32_t answer = conway[0].Size();
+
 	PuzzleOutput::Submit(2020, 17, 1, answer);
 }
 
 void Puzzle17_B_2020()
 {
-	Puzzle17_B(R"(z:\AoCInput\2020\Puzzle17.txt)");
+	array<HashSet<uint32_t>, 2> conway =
+	{
+		HashSet<uint32_t>{ 4096, 0 },
+		HashSet<uint32_t>{ 4096, 0 }
+	};
 
-	int32_t answer = 0;
+	ReadStartingConfiguration(&conway[0], { 7, 7, 7, 7 });
+
+	InactiveCountBuffer inactiveCounts(Vec4Int{ 22, 22, 15, 15 });
+
+	vector<Neighbour> neighbours = Generate4DNeighbours();
+	for (size_t i = 0; i < 6; i++)
+	{
+		Step(conway[i & 1], neighbours, &inactiveCounts, &conway[1 - (i & 1)]);
+	}
+
+	int32_t answer = conway[0].Size();
+
 	PuzzleOutput::Submit(2020, 17, 2, answer);
 }
