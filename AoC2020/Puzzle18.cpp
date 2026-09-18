@@ -2,9 +2,6 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle18_2020_Types
 {
 }
@@ -150,58 +147,34 @@ static int64_t EvaluateReversePolishNotationSum(const string& sum)
 	return evaluationStack.top();
 }
 
-static int64_t EvaluateSum(const string &sum)
-{
-	string rpnSum = CovertToReversePolishNotation(sum);
-	return EvaluateReversePolishNotationSum(rpnSum);
-}
-
-static void Puzzle18_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> values = MakeEnumerator(ReadAllLines(input))
-		->Select<int64_t>([](const string& line) { return EvaluateSum(line); })
-		->ToVector();
-
-	int64_t answer = MakeEnumerator(values)->Sum();
-
-	printf("[2020] Puzzle18_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle18_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> rpn = MakeEnumerator(ReadAllLines(input))
-		->Select<string>([](const string& line) { return CovertToReversePolishNotationSillyPrecedence(line); })
-		->ToVector();
-
-	vector<int64_t> values = MakeEnumerator(rpn)
-		->Select<int64_t>([](const string& line) { return EvaluateReversePolishNotationSum(line); })
-		->ToVector();
-
-	int64_t answer = MakeEnumerator(values)->Sum();
-
-	printf("[2020] Puzzle18_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle18_A_2020()
 {
-	Puzzle18_A(R"(z:\AoCInput\2020\Puzzle18.txt)");
+	vector<char> line(256);
 
-	int32_t answer = 0;
+	int64_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		Parse::ReadNonEmptyLine(line.data(), line.size());
+
+		string rpn = CovertToReversePolishNotation(line.data());
+		answer += EvaluateReversePolishNotationSum(rpn);
+	}
+
 	PuzzleOutput::Submit(2020, 18, 1, answer);
 }
 
 void Puzzle18_B_2020()
 {
-	Puzzle18_B(R"(z:\AoCInput\2020\Puzzle18.txt)");
+	vector<char> line(256);
 
-	int32_t answer = 0;
+	int64_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		Parse::ReadNonEmptyLine(line.data(), line.size());
+
+		string rpn = CovertToReversePolishNotationSillyPrecedence(line.data());
+		answer += EvaluateReversePolishNotationSum(rpn);
+	}
+
 	PuzzleOutput::Submit(2020, 18, 2, answer);
 }
