@@ -25,7 +25,7 @@ namespace Puzzle17_2020_Types
 			decodedPos.Y = (pos >> 16) & 0xff;
 			decodedPos.Z = (pos >> 8) & 0xff;
 			decodedPos.W = (pos >> 0) & 0xff;
-			decodedPos = decodedPos - Vec4Int{ 0x80, 0x80, 0x80, 0x80 };
+			decodedPos = decodedPos;
 
 			assert((decodedPos.X >= 0) && (decodedPos.X < Dimensions.X));
 			assert((decodedPos.Y >= 0) && (decodedPos.Y < Dimensions.Y));
@@ -46,19 +46,14 @@ namespace Puzzle17_2020_Types
 
 		void Extract(HashSet<uint32_t>* next, int8_t target)
 		{
-			const int32_t endX = Dimensions.X + 0x80;
-			const int32_t endY = Dimensions.Y + 0x80;
-			const int32_t endZ = Dimensions.Z + 0x80;
-			const int32_t endW = Dimensions.W + 0x80;
-
 			size_t index = 0;
-			for (int32_t w = 0x80; w < endW; w++)
+			for (int32_t w = 0; w < Dimensions.W; w++)
 			{
-				for (int32_t z = 0x80; z < endZ; z++)
+				for (int32_t z = 0; z < Dimensions.Z; z++)
 				{
-					for (int32_t y = 0x80; y < endY; y++)
+					for (int32_t y = 0; y < Dimensions.Y; y++)
 					{
-						for (int32_t x = 0x80; x < endX; x++)
+						for (int32_t x = 0; x < Dimensions.X; x++)
 						{
 							int8_t count = Data[index];
 							if (count == target)
@@ -100,7 +95,7 @@ static void ReadStartingConfiguration(HashSet<uint32_t>* config, const Vec4Int& 
 
 			if (c == '#')
 			{
-				uint32_t cell = 0x80808080;
+				uint32_t cell = 0;
 				cell += (offset.X + x) << 24;
 				cell += (offset.Y + y) << 16;
 				cell += (offset.Z    ) << 8;
