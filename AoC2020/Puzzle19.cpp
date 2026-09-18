@@ -2,11 +2,14 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle19_2020_Types
 {
+	struct Rule
+	{
+		char Terminal = '\0';
+		size_t NumProductions = 0;
+		array<array<int32_t, 2>, 2> Productions;
+	};
 }
 
 using namespace Puzzle19_2020_Types;
@@ -347,9 +350,215 @@ static void Puzzle19_B(const string& filename)
 	printf("[2020] Puzzle19_B: %" PRId64 "\n", answer);
 }
 
+
+// ------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------
+
+static void ParseRule(vector<Rule>* rules)
+{
+	int32_t ruleIndex = Parse::GetInt32();
+	Parse::DiscardExpected(": ");
+
+	Rule& rule = (*rules)[ruleIndex];
+
+	if (PuzzleInput::PeekChar() == '"')
+	{
+		PuzzleInput::DropChar();
+		rule.Terminal = static_cast<char>(PuzzleInput::GetChar());
+		Parse::DiscardExpected("\"");
+	}
+	else
+	{
+		while (true)
+		{
+			int32_t firstNonterminal = Parse::GetInt32();
+
+			array<int32_t, 2>& productions = rule.Productions[rule.NumProductions++];
+			productions[0] = firstNonterminal;
+			productions[1] = -1;
+
+			if (PuzzleInput::PeekChar() == '\n')
+				break;
+
+			Parse::DiscardExpected(" ");
+
+			if (PuzzleInput::PeekChar() == '|')
+			{
+				Parse::DiscardExpected("| ");
+				continue;
+			}
+			else if (isdigit(PuzzleInput::PeekChar()))
+			{
+				int32_t secondNonterminal = Parse::GetInt32();
+				productions[1] = secondNonterminal;
+			}
+
+			if (PuzzleInput::PeekChar() == '\n')
+				break;
+
+			Parse::DiscardExpected(" | ");
+		}
+	}
+
+	Parse::DiscardExpected("\n");
+}
+
+//**Needs converting to stack based
+static size_t GetLength(int32_t nonterminal, const vector<Rule>& productionRules, vector<size_t>* lengths)
+{
+	size_t existingSize = (*lengths)[nonterminal];
+	if (existingSize > 0)
+		return existingSize;
+
+	size_t length = numeric_limits<size_t>::max();
+	const Rule& rule = productionRules[nonterminal];
+
+	if (rule.Terminal)
+	{
+		length = 1;
+	}
+	else
+	{
+		assert(rule.NumProductions > 0);
+		for (size_t i = 0; i < rule.NumProductions; i++)
+		{
+			length = GetLength(rule.Productions[i][0], productionRules, lengths);
+			if (rule.Productions[i][1] != -1)
+			{
+				length += GetLength(rule.Productions[i][1], productionRules, lengths);
+			}
+		}
+	}
+
+	(*lengths)[nonterminal] = length;
+	return length;
+}
+
+static bool Match(int32_t nonterminal, size_t position, const char* message, const vector<Rule>& productionRules, const vector<size_t>& lengths)
+{
+	const Rule& rule = productionRules[nonterminal];
+
+	bool matches = false;
+	if (rule.Terminal)
+	{
+		matches = message[position] == rule.Terminal;
+	}
+	else
+	{
+		size_t lengthOfNonterminal = lengths[nonterminal];
+		for (size_t production = 0; production < rule.NumProductions; production++)
+		{
+			size_t subPosition = position;
+			for (int32_t nextNonterminal : rule.Productions[production])
+			{
+				if (nextNonterminal == -1)
+					break;
+
+				if (Match(nextNonterminal, subPosition, message, productionRules, lengths))
+				{
+					subPosition += lengths[nextNonterminal];
+				}
+				else
+				{
+					break;
+				}
+			}
+			if (subPosition == (position + lengthOfNonterminal))
+			{
+				matches = true;
+				break;
+			}
+		}
+	}
+
+	return matches;
+}
+
+static void Combined()
+{
+	vector<Rule> productionRules;
+	productionRules.resize(256);
+
+	while (PuzzleInput::PeekChar() != '\n')
+	{
+		ParseRule(&productionRules);
+	}
+
+	Parse::DiscardExpected("\n");
+
+	vector<size_t> lengths(150);
+	GetLength(0, productionRules, &lengths);
+
+	int32_t part1Answer = 0;
+	int32_t part2Answer = 0;
+
+	size_t part1Length = lengths[0];
+	size_t part2ChunkSize = lengths[42];
+	assert(lengths[31] == part2ChunkSize);
+
+	vector<char> line(100);
+	while (PuzzleInput::NextLine())
+	{
+		int32_t lineLength = Parse::ReadNonEmptyLine(line.data(), line.size());
+		if ((lineLength == part1Length) && Match(0, 0, line.data(), productionRules, lengths))
+		{
+			part1Answer++;
+		}
+
+		const char* part2Chunks = line.data();
+		const char* endOfLine = part2Chunks + lineLength;
+		assert((lineLength % part2ChunkSize) == 0);
+
+		// Count 42s
+		size_t symbol42Count = 0;
+		while (part2Chunks != endOfLine)
+		{
+			if (Match(42, 0, part2Chunks, productionRules, lengths))
+			{
+				symbol42Count++;
+				part2Chunks += part2ChunkSize;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		// Count31s
+		bool valid = true;
+		size_t symbol31Count = 0;
+		while (part2Chunks != endOfLine)
+		{
+			if (Match(31, 0, part2Chunks, productionRules, lengths))
+			{
+				symbol31Count++;
+				part2Chunks += part2ChunkSize;
+			}
+			else
+			{
+				valid = false;
+				break;
+			}
+		}
+
+		if (valid && (symbol31Count > 0) && (symbol42Count > symbol31Count))
+		{
+			part2Answer++;
+		}
+	}
+
+	printf("Part 1: %d\n", part1Answer);
+	printf("Part 2: %d\n", part2Answer);
+}
+
+
 void Puzzle19_A_2020()
 {
 	Puzzle19_A(R"(z:\AoCInput\2020\Puzzle19.txt)");
+
+	Combined();
 
 	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 19, 1, answer);
