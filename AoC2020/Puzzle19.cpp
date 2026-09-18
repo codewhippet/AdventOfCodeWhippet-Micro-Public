@@ -7,354 +7,12 @@ namespace Puzzle19_2020_Types
 	struct Rule
 	{
 		char Terminal = '\0';
-		size_t NumProductions = 0;
+		uint32_t NumProductions = 0;
 		array<array<int32_t, 2>, 2> Productions;
 	};
 }
 
 using namespace Puzzle19_2020_Types;
-
-
-static int MakeAtom(int id)
-{
-	return id + 1000;
-}
-
-static bool IsAtom(int id)
-{
-	return id >= 1000;
-}
-
-static vector<int> Tokenise(const string& input, const map<char, int>& tokeniserRules)
-{
-	return MakeEnumerator(input)
-		->Select<int>([&tokeniserRules](char c) { return tokeniserRules.at(c); })
-		->ToVector();
-}
-
-static void Puzzle19_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<int, set<vector<int>>> productionRules;
-	map<char, int> tokeniserRules;
-	vector<string> messages;
-	{
-		regex productionSingleFormat(R"((\d+): (\d+))");
-		regex productionDoubleFormat(R"((\d+): (\d+) (\d+))");
-		regex productionSingleChoiceFormat(R"((\d+): (\d+) \| (\d+))");
-		regex productionDoubleChoiceFormat(R"((\d+): (\d+) (\d+) \| (\d+) (\d+))");
-		regex productionAtomFormat(R"-((\d+): "(\w)")-");
-		regex messageFormat(R"([ab]+)");
-
-		for (const string& line : ReadAllLines(input))
-		{
-			smatch match;
-			if (regex_match(line, match, productionSingleFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()) });
-			}
-
-			if (regex_match(line, match, productionDoubleFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()), stoi(match[3].str()) });
-			}
-
-			if (regex_match(line, match, productionSingleChoiceFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()) });
-				productionRules[stoi(match[1].str())].insert({ stoi(match[3].str()) });
-			}
-
-			if (regex_match(line, match, productionDoubleChoiceFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()), stoi(match[3].str()) });
-				productionRules[stoi(match[1].str())].insert({ stoi(match[4].str()), stoi(match[5].str()) });
-			}
-
-			if (regex_match(line, match, productionAtomFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ MakeAtom(match[2].str()[0]) });
-				tokeniserRules[match[2].str()[0]] = MakeAtom(match[2].str()[0]);
-			}
-
-			if (regex_match(line, match, messageFormat))
-			{
-				messages.push_back(match.str());
-			}
-		}
-	}
-
-	// Generate
-	map<int, set<vector<int>>> fullGrammar;
-	function<const set<vector<int>>&(int id)> generate;
-	generate = [&generate, &fullGrammar, &productionRules](int id) -> const set<vector<int>> &
-	{
-		map<int, set<vector<int>>>::const_iterator cachedIt = fullGrammar.find(id);
-		if (cachedIt != fullGrammar.end())
-		{
-			return cachedIt->second;
-		}
-
-		if (IsAtom(id))
-		{			
-			vector<int> singleElement;
-			singleElement.push_back(id);
-			fullGrammar[id].insert(move(singleElement));
-			return fullGrammar[id];
-		}
-
-		const set<vector<int>>& possibleProductions = productionRules.at(id);
-		for (const vector<int> &production : possibleProductions)
-		{
-			if (production.size() == 1)
-			{
-				const set<vector<int>>& gen = generate(production[0]);
-				fullGrammar[id].insert(gen.begin(), gen.end());
-				continue;
-			}
-
-			assert(production.size() == 2);
-			for (const vector<int>& gen1 : generate(production[0]))
-			{
-				for (const vector<int>& gen2 : generate(production[1]))
-				{
-					vector<int> combined = gen1;
-					combined.insert(combined.end(), gen2.begin(), gen2.end());
-					fullGrammar[id].insert(move(combined));
-				}
-			}
-		}
-
-		return fullGrammar[id];
-	};
-
-	generate(0);
-
-	int64_t answer = 0;
-	for (const string& message : messages)
-	{
-		vector<int> tokenisedMessage = Tokenise(message, tokeniserRules);
-		if (fullGrammar[0].find(tokenisedMessage) != fullGrammar[0].end())
-		{
-			answer++;
-		}
-	}
-
-	printf("[2020] Puzzle19_A: %" PRId64 "\n", answer);
-}
-
-
-static void Puzzle19_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<int, set<vector<int>>> productionRules;
-	map<char, int> tokeniserRules;
-	vector<string> messages;
-	{
-		regex productionSingleFormat(R"((\d+): (\d+))");
-		regex productionDoubleFormat(R"((\d+): (\d+) (\d+))");
-		regex productionSingleChoiceFormat(R"((\d+): (\d+) \| (\d+))");
-		regex productionDoubleChoiceFormat(R"((\d+): (\d+) (\d+) \| (\d+) (\d+))");
-		regex productionAtomFormat(R"-((\d+): "(\w)")-");
-		regex messageFormat(R"([ab]+)");
-
-		for (const string& line : ReadAllLines(input))
-		{
-			smatch match;
-			if (regex_match(line, match, productionSingleFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()) });
-			}
-
-			if (regex_match(line, match, productionDoubleFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()), stoi(match[3].str()) });
-			}
-
-			if (regex_match(line, match, productionSingleChoiceFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()) });
-				productionRules[stoi(match[1].str())].insert({ stoi(match[3].str()) });
-			}
-
-			if (regex_match(line, match, productionDoubleChoiceFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ stoi(match[2].str()), stoi(match[3].str()) });
-				productionRules[stoi(match[1].str())].insert({ stoi(match[4].str()), stoi(match[5].str()) });
-			}
-
-			if (regex_match(line, match, productionAtomFormat))
-			{
-				productionRules[stoi(match[1].str())].insert({ MakeAtom(match[2].str()[0]) });
-				tokeniserRules[match[2].str()[0]] = MakeAtom(match[2].str()[0]);
-			}
-
-			if (regex_match(line, match, messageFormat))
-			{
-				messages.push_back(match.str());
-			}
-		}
-	}
-
-	// Clear out unwanted production rules
-	productionRules.erase(8);
-	productionRules.erase(11);
-
-	// Non-recursive rules
-	//productionRules[8].insert(vector<int>{ 42 });
-	//productionRules[11].insert(vector<int>{ 42, 31 });
-
-	// Generate
-	set<vector<int>> emptyGrammar;
-
-	map<int, set<vector<int>>> fullGrammar;
-	function<const set<vector<int>>& (int id)> generate;
-	generate = [&](int id) -> const set<vector<int>> &
-	{
-		map<int, set<vector<int>>>::const_iterator cachedIt = fullGrammar.find(id);
-		if (cachedIt != fullGrammar.end())
-		{
-			return cachedIt->second;
-		}
-
-		if (IsAtom(id))
-		{
-			vector<int> singleElement;
-			singleElement.push_back(id);
-			fullGrammar[id].insert(move(singleElement));
-			return fullGrammar[id];
-		}
-
-		if (productionRules.find(id) == productionRules.end())
-		{
-			return emptyGrammar;
-		}
-
-		const set<vector<int>>& possibleProductions = productionRules.at(id);
-		for (const vector<int>& production : possibleProductions)
-		{
-			if (production.size() == 1)
-			{
-				const set<vector<int>>& gen = generate(production[0]);
-				fullGrammar[id].insert(gen.begin(), gen.end());
-				continue;
-			}
-
-			assert(production.size() == 2);
-			for (const vector<int>& gen1 : generate(production[0]))
-			{
-				for (const vector<int>& gen2 : generate(production[1]))
-				{
-					vector<int> combined = gen1;
-					combined.insert(combined.end(), gen2.begin(), gen2.end());
-					fullGrammar[id].insert(move(combined));
-				}
-			}
-		}
-
-		return fullGrammar[id];
-	};
-
-	//generate(0);
-	generate(42);
-	generate(31);
-
-	// Do 42 & 31 overlap?
-	vector<vector<int>> common;
-	set_intersection(fullGrammar[31].begin(), fullGrammar[31].end(),
-		fullGrammar[42].begin(), fullGrammar[42].end(),
-		back_inserter(common));
-	assert(common.empty());
-
-	// Make sure all fragments are the same size for easy parsing
-	for (const vector<int> &fragment : fullGrammar[31])
-	{
-		assert(fragment.size() == fullGrammar[31].begin()->size());
-		(void)fragment;
-	}
-	for (const vector<int>& fragment : fullGrammar[42])
-	{
-		assert(fragment.size() == fullGrammar[31].begin()->size());
-		(void)fragment;
-	}
-	assert(fullGrammar[31].begin()->size() == fullGrammar[42].begin()->size());
-
-
-	size_t fragmentSize = fullGrammar[31].begin()->size();
-
-	int64_t answer = 0;
-	for (const string& message : messages)
-	{
-		if (message.size() % fragmentSize != 0)
-		{
-			continue;
-		}
-
-		vector<int> tokenisedMessage = Tokenise(message, tokeniserRules);
-
-		// Grammar is 42+ 42^n 31^n
-		// A lots of 42 followed by B lots of 31, where A > B
-		int num42s = 0;
-		while (true)
-		{
-			if (tokenisedMessage.empty())
-			{
-				break;
-			}
-
-			vector<int> f;
-			f.insert(f.end(), tokenisedMessage.begin(), tokenisedMessage.begin() + fragmentSize);
-			if (fullGrammar[42].find(f) == fullGrammar[42].end())
-			{
-				break;
-			}
-
-			tokenisedMessage.erase(tokenisedMessage.begin(), tokenisedMessage.begin() + fragmentSize);
-			num42s++;
-		}
-
-		bool valid = true;
-
-		int num31s = 0;
-		while (true)
-		{
-			if (tokenisedMessage.empty())
-			{
-				break;
-			}
-
-			vector<int> f;
-			f.insert(f.end(), tokenisedMessage.begin(), tokenisedMessage.begin() + fragmentSize);
-			if (fullGrammar[31].find(f) == fullGrammar[31].end())
-			{
-				valid = false;
-				break;
-			}
-
-			tokenisedMessage.erase(tokenisedMessage.begin(), tokenisedMessage.begin() + fragmentSize);
-			num31s++;
-		}
-
-		if (valid && (num42s > 0) && (num31s > 0) && (num42s > num31s))
-		{
-			answer++;
-		}
-	}
-
-	printf("[2020] Puzzle19_B: %" PRId64 "\n", answer);
-}
-
-
-// ------------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------------
 
 static void ParseRule(vector<Rule>* rules)
 {
@@ -405,38 +63,78 @@ static void ParseRule(vector<Rule>* rules)
 	Parse::DiscardExpected("\n");
 }
 
-//**Needs converting to stack based
-static size_t GetLength(int32_t nonterminal, const vector<Rule>& productionRules, vector<size_t>* lengths)
+static void GetLengths(int32_t startAt, const vector<Rule>& productionRules, vector<uint32_t>* lengths)
 {
-	size_t existingSize = (*lengths)[nonterminal];
-	if (existingSize > 0)
-		return existingSize;
+	vector<int32_t> nonTerminals;
+	nonTerminals.reserve(16);
 
-	size_t length = numeric_limits<size_t>::max();
-	const Rule& rule = productionRules[nonterminal];
+	nonTerminals.push_back(startAt);
+	while (nonTerminals.empty() == false)
+	{
+		int32_t nonTerminal = nonTerminals.back();
 
-	if (rule.Terminal)
-	{
-		length = 1;
-	}
-	else
-	{
-		assert(rule.NumProductions > 0);
-		for (size_t i = 0; i < rule.NumProductions; i++)
+		// Do we know the length?
+		uint32_t existingSize = (*lengths)[nonTerminal];
+		if (existingSize > 0)
 		{
-			length = GetLength(rule.Productions[i][0], productionRules, lengths);
-			if (rule.Productions[i][1] != -1)
+			nonTerminals.pop_back();
+			continue;
+		}
+
+		const Rule& rule = productionRules[nonTerminal];
+
+		// Is this a terminal?
+		if (rule.Terminal)
+		{
+			(*lengths)[nonTerminal] = 1;
+			nonTerminals.pop_back();
+			continue;
+		}
+
+		// Try to work out the proper length
+		// NOTE: Left and right branches are equal length in the puzzle grammar, but we need
+		// to traverse both legs in order to have a full set of lengths
+		assert(rule.NumProductions > 0);
+		uint32_t length = numeric_limits<uint32_t>::max();
+		bool everythingKnown = true;
+		for (uint32_t i = 0; i < rule.NumProductions; i++)
+		{
+			int32_t first = rule.Productions[i][0];
+			int32_t second = rule.Productions[i][1];
+
+			// Do we know the first production non-terminal length?
+			if ((*lengths)[first] == 0)
 			{
-				length += GetLength(rule.Productions[i][1], productionRules, lengths);
+				nonTerminals.push_back(first);
+				everythingKnown = false;
+				break;
+			}
+
+			length = (*lengths)[first];
+
+			// Do we know the optional second production non-terminal length?
+			if (second != -1)
+			{
+				if ((*lengths)[second] == 0)
+				{
+					nonTerminals.push_back(second);
+					everythingKnown = false;
+					break;
+				}
+
+				length += (*lengths)[second];
 			}
 		}
-	}
 
-	(*lengths)[nonterminal] = length;
-	return length;
+		if (everythingKnown)
+		{
+			(*lengths)[nonTerminal] = length;
+			nonTerminals.pop_back();
+		}
+	}
 }
 
-static bool Match(int32_t nonterminal, size_t position, const char* message, const vector<Rule>& productionRules, const vector<size_t>& lengths)
+static bool Match(int32_t nonterminal, size_t position, const char* message, const vector<Rule>& productionRules, const vector<uint32_t>& lengths)
 {
 	const Rule& rule = productionRules[nonterminal];
 
@@ -476,49 +174,71 @@ static bool Match(int32_t nonterminal, size_t position, const char* message, con
 	return matches;
 }
 
-static void Combined()
+void Puzzle19_A_2020()
 {
 	vector<Rule> productionRules;
 	productionRules.resize(256);
-
 	while (PuzzleInput::PeekChar() != '\n')
 	{
 		ParseRule(&productionRules);
 	}
-
 	Parse::DiscardExpected("\n");
 
-	vector<size_t> lengths(150);
-	GetLength(0, productionRules, &lengths);
+	vector<uint32_t> lengths(150);
+	GetLengths(0, productionRules, &lengths);
 
-	int32_t part1Answer = 0;
-	int32_t part2Answer = 0;
+	int32_t answer = 0;
 
-	size_t part1Length = lengths[0];
-	size_t part2ChunkSize = lengths[42];
-	assert(lengths[31] == part2ChunkSize);
+	size_t expectedLength = lengths[0];
 
 	vector<char> line(100);
 	while (PuzzleInput::NextLine())
 	{
 		int32_t lineLength = Parse::ReadNonEmptyLine(line.data(), line.size());
-		if ((lineLength == part1Length) && Match(0, 0, line.data(), productionRules, lengths))
+		if ((lineLength == expectedLength) && Match(0, 0, line.data(), productionRules, lengths))
 		{
-			part1Answer++;
+			answer++;
 		}
+	}
 
-		const char* part2Chunks = line.data();
-		const char* endOfLine = part2Chunks + lineLength;
-		assert((lineLength % part2ChunkSize) == 0);
+	PuzzleOutput::Submit(2020, 19, 1, answer);
+}
+
+void Puzzle19_B_2020()
+{
+	vector<Rule> productionRules;
+	productionRules.resize(256);
+	while (PuzzleInput::PeekChar() != '\n')
+	{
+		ParseRule(&productionRules);
+	}
+	Parse::DiscardExpected("\n");
+
+	vector<uint32_t> lengths(150);
+	GetLengths(0, productionRules, &lengths);
+
+	int32_t answer = 0;
+
+	size_t chunkSize = lengths[42];
+	assert(lengths[31] == chunkSize);
+
+	vector<char> line(100);
+	while (PuzzleInput::NextLine())
+	{
+		int32_t lineLength = Parse::ReadNonEmptyLine(line.data(), line.size());
+
+		const char* chunk = line.data();
+		const char* endOfLine = chunk + lineLength;
+		assert((lineLength % chunkSize) == 0);
 
 		// Count 42s
 		size_t symbol42Count = 0;
-		while (part2Chunks != endOfLine)
+		while (chunk != endOfLine)
 		{
-			if (Match(42, 0, part2Chunks, productionRules, lengths))
+			if (Match(42, 0, chunk, productionRules, lengths))
 			{
 				symbol42Count++;
-				part2Chunks += part2ChunkSize;
+				chunk += chunkSize;
 			}
 			else
 			{
@@ -526,15 +246,15 @@ static void Combined()
 			}
 		}
 
-		// Count31s
+		// Count 31s
 		bool valid = true;
 		size_t symbol31Count = 0;
-		while (part2Chunks != endOfLine)
+		while (chunk != endOfLine)
 		{
-			if (Match(31, 0, part2Chunks, productionRules, lengths))
+			if (Match(31, 0, chunk, productionRules, lengths))
 			{
 				symbol31Count++;
-				part2Chunks += part2ChunkSize;
+				chunk += chunkSize;
 			}
 			else
 			{
@@ -545,29 +265,9 @@ static void Combined()
 
 		if (valid && (symbol31Count > 0) && (symbol42Count > symbol31Count))
 		{
-			part2Answer++;
+			answer++;
 		}
 	}
 
-	printf("Part 1: %d\n", part1Answer);
-	printf("Part 2: %d\n", part2Answer);
-}
-
-
-void Puzzle19_A_2020()
-{
-	Puzzle19_A(R"(z:\AoCInput\2020\Puzzle19.txt)");
-
-	Combined();
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 19, 1, answer);
-}
-
-void Puzzle19_B_2020()
-{
-	Puzzle19_B(R"(z:\AoCInput\2020\Puzzle19.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2020, 19, 2, answer);
 }
