@@ -29,7 +29,7 @@ namespace Parse
 	int32_t ReadLine(char* dest, size_t bufferSize);
 	int32_t ReadNonDigits(char* dest, size_t bufferSize);
 
-	void ReadNonEmptyLine(char* dest, size_t bufferSize);
+	int32_t ReadNonEmptyLine(char* dest, size_t bufferSize);
 
 	template <size_t N>
 	void ReadNonEmptyLine(char (&dest)[N])

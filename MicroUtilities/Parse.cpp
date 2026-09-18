@@ -228,11 +228,11 @@ int32_t Parse::ReadNonDigits(char* dest, size_t bufferSize)
 	return (dest[charsWritten] == '\0') ? charsWritten : -1;
 }
 
-void Parse::ReadNonEmptyLine(char* dest, size_t bufferSize)
+int32_t Parse::ReadNonEmptyLine(char* dest, size_t bufferSize)
 {
 	int32_t lineLength = ReadLine(dest, bufferSize);
 	assert(lineLength > 0);
-	(void)lineLength;
+	return lineLength;
 }
 
 void Parse::DiscardExpected(const char * expected)
