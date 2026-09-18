@@ -13,57 +13,23 @@ namespace Puzzle17_2020_Types
 	struct InactiveCountBuffer
 	{
 		InactiveCountBuffer(const Vec4Int& dimensions)
-			: Dimensions(dimensions)
+			: Data(dimensions.X * dimensions.Y * dimensions.Z * dimensions.W)
 		{
-			Data.resize(Dimensions.X * Dimensions.Y * Dimensions.Z * Dimensions.W);
 		}
 
 		void Increment(uint32_t pos, int8_t inc)
 		{
-			Vec4Int decodedPos;
-			decodedPos.X = (pos >> 24) & 0xff;
-			decodedPos.Y = (pos >> 16) & 0xff;
-			decodedPos.Z = (pos >> 8) & 0xff;
-			decodedPos.W = (pos >> 0) & 0xff;
-			decodedPos = decodedPos;
-
-			assert((decodedPos.X >= 0) && (decodedPos.X < Dimensions.X));
-			assert((decodedPos.Y >= 0) && (decodedPos.Y < Dimensions.Y));
-			assert((decodedPos.Z >= 0) && (decodedPos.Z < Dimensions.Z));
-			assert((decodedPos.W >= 0) && (decodedPos.W < Dimensions.W));
-
-			size_t index =  0;
-			index += decodedPos.W;
-			index *= Dimensions.Z;
-			index += decodedPos.Z;
-			index *= Dimensions.Y;
-			index += decodedPos.Y;
-			index *= Dimensions.X;
-			index += decodedPos.X;
-
-			Data[index] += inc;
+			Data[pos] += inc;
 		}
 
 		void Extract(HashSet<uint32_t>* next, int8_t target)
 		{
-			size_t index = 0;
-			for (int32_t w = 0; w < Dimensions.W; w++)
+			for (uint32_t index = 0; index < static_cast<uint32_t>(Data.size()); index++)
 			{
-				for (int32_t z = 0; z < Dimensions.Z; z++)
+				int8_t count = Data[index];
+				if (count == target)
 				{
-					for (int32_t y = 0; y < Dimensions.Y; y++)
-					{
-						for (int32_t x = 0; x < Dimensions.X; x++)
-						{
-							int8_t count = Data[index];
-							if (count == target)
-							{
-								next->Insert((x << 24) | (y << 16) | (z << 8) | (w << 0));
-							}
-
-							index++;
-						}
-					}
+					next->Insert(index);
 				}
 			}
 		}
@@ -73,14 +39,13 @@ namespace Puzzle17_2020_Types
 			ranges::fill(Data, static_cast<int8_t>(0));
 		}
 
-		Vec4Int Dimensions;
 		vector<int8_t> Data;
 	};
 }
 
 using namespace Puzzle17_2020_Types;
 
-static void ReadStartingConfiguration(HashSet<uint32_t>* config, const Vec4Int& offset)
+static void ReadStartingConfiguration(HashSet<uint32_t>* config, const Vec4Int& offset, const Vec4Int& dimensions)
 {
 	for (int32_t y = 0; y < numeric_limits<int32_t>::max(); y++)
 	{
@@ -96,17 +61,21 @@ static void ReadStartingConfiguration(HashSet<uint32_t>* config, const Vec4Int& 
 			if (c == '#')
 			{
 				uint32_t cell = 0;
-				cell += (offset.X + x) << 24;
-				cell += (offset.Y + y) << 16;
-				cell += (offset.Z    ) << 8;
-				cell += (offset.W    ) << 0;
+				cell += offset.W;
+				cell *= dimensions.Z;
+				cell += offset.Z;
+				cell *= dimensions.Y;
+				cell += y + offset.Y;
+				cell *= dimensions.X;
+				cell += x + offset.X;
+
 				config->Insert(cell);
 			}
 		}
 	}
 }
 
-static vector<Neighbour> Generate3DNeighbours()
+static vector<Neighbour> Generate3DNeighbours(const Vec4Int& dimensions)
 {
 	vector<Neighbour> neighbours;
 	neighbours.reserve((3 * 3 * 3) - 1);
@@ -122,14 +91,14 @@ static vector<Neighbour> Generate3DNeighbours()
 
 				Neighbour neighbour;
 
-				if (x > 0) neighbour.Add |= 1 << 24;
-				if (x < 0) neighbour.Sub |= 1 << 24;
+				if (x > 0) neighbour.Add += 1;
+				if (x < 0) neighbour.Sub += 1;
 
-				if (y > 0) neighbour.Add |= 1 << 16;
-				if (y < 0) neighbour.Sub |= 1 << 16;
+				if (y > 0) neighbour.Add += dimensions.X;
+				if (y < 0) neighbour.Sub += dimensions.X;
 
-				if (z > 0) neighbour.Add |= 1 << 8;
-				if (z < 0) neighbour.Sub |= 1 << 8;
+				if (z > 0) neighbour.Add += dimensions.X * dimensions.Y;
+				if (z < 0) neighbour.Sub += dimensions.X * dimensions.Y;
 
 				neighbours.push_back(neighbour);
 			}
@@ -138,7 +107,7 @@ static vector<Neighbour> Generate3DNeighbours()
 	return neighbours;
 }
 
-static vector<Neighbour> Generate4DNeighbours()
+static vector<Neighbour> Generate4DNeighbours(const Vec4Int& dimensions)
 {
 	vector<Neighbour> neighbours;
 	neighbours.reserve((3 * 3 * 3 * 3) - 1);
@@ -156,17 +125,17 @@ static vector<Neighbour> Generate4DNeighbours()
 
 					Neighbour neighbour;
 
-					if (x > 0) neighbour.Add |= 1 << 24;
-					if (x < 0) neighbour.Sub |= 1 << 24;
+					if (x > 0) neighbour.Add += 1;
+					if (x < 0) neighbour.Sub += 1;
 
-					if (y > 0) neighbour.Add |= 1 << 16;
-					if (y < 0) neighbour.Sub |= 1 << 16;
+					if (y > 0) neighbour.Add += dimensions.X;
+					if (y < 0) neighbour.Sub += dimensions.X;
 
-					if (z > 0) neighbour.Add |= 1 << 8;
-					if (z < 0) neighbour.Sub |= 1 << 8;
+					if (z > 0) neighbour.Add += dimensions.X * dimensions.Y;
+					if (z < 0) neighbour.Sub += dimensions.X * dimensions.Y;
 
-					if (w > 0) neighbour.Add |= 1 << 0;
-					if (w < 0) neighbour.Sub |= 1 << 0;
+					if (w > 0) neighbour.Add += dimensions.X * dimensions.Y * dimensions.Z;
+					if (w < 0) neighbour.Sub += dimensions.X * dimensions.Y * dimensions.Z;
 
 					neighbours.push_back(neighbour);
 				}
@@ -212,11 +181,13 @@ void Puzzle17_A_2020()
 		HashSet<uint32_t>{ 1024, 0 }
 	};
 
-	ReadStartingConfiguration(&conway[0], { 7, 7, 7, 0 });
+	const Vec4Int spatialDimensions{ 22, 22, 15, 1 };
 
-	InactiveCountBuffer inactiveCounts(Vec4Int{ 22, 22, 15, 1 });
+	ReadStartingConfiguration(&conway[0], { 7, 7, 7, 0 }, spatialDimensions);
 
-	vector<Neighbour> neighbours = Generate3DNeighbours();
+	InactiveCountBuffer inactiveCounts(spatialDimensions);
+
+	vector<Neighbour> neighbours = Generate3DNeighbours(spatialDimensions);
 	for (size_t i = 0; i < 6; i++)
 	{
 		Step(conway[i & 1], neighbours, &inactiveCounts, &conway[1 - (i & 1)]);
@@ -235,11 +206,13 @@ void Puzzle17_B_2020()
 		HashSet<uint32_t>{ 4096, 0 }
 	};
 
-	ReadStartingConfiguration(&conway[0], { 7, 7, 7, 7 });
+	const Vec4Int spatialDimensions{ 22, 22, 15, 15 };
 
-	InactiveCountBuffer inactiveCounts(Vec4Int{ 22, 22, 15, 15 });
+	ReadStartingConfiguration(&conway[0], { 7, 7, 7, 7 }, spatialDimensions);
 
-	vector<Neighbour> neighbours = Generate4DNeighbours();
+	InactiveCountBuffer inactiveCounts(spatialDimensions);
+
+	vector<Neighbour> neighbours = Generate4DNeighbours(spatialDimensions);
 	for (size_t i = 0; i < 6; i++)
 	{
 		Step(conway[i & 1], neighbours, &inactiveCounts, &conway[1 - (i & 1)]);
