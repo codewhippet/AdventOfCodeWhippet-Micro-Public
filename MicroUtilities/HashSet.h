@@ -182,6 +182,12 @@ public:
 		return false;
 	}
 
+	void Reset()
+	{
+		std::fill(Table.begin(), Table.end(), InvalidValue);
+		SetSize = 0;
+	}
+
 	size_type Size() const
 	{
 		return SetSize;
