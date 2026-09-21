@@ -97,6 +97,18 @@ public:
 		return Data[index];
 	}
 
+	reference Back()
+	{
+		assert(Size > 0);
+		return Data[Size - 1];
+	}
+
+	const_reference Back() const
+	{
+		assert(Size > 0);
+		return Data[Size - 1];
+	}
+
 	int32_t size() const
 	{
 		return Size;
