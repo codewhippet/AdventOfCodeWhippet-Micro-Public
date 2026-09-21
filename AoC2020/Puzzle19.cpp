@@ -7,8 +7,25 @@ namespace Puzzle19_2020_Types
 	struct Rule
 	{
 		char Terminal = '\0';
-		uint32_t NumProductions = 0;
-		array<array<int32_t, 2>, 2> Productions;
+		SmallVector<SmallVector<int32_t, 2>, 2> Productions;
+	};
+
+	enum class KnownMatchState
+	{
+		Unknown,
+		Matches,
+		DoesntMatch,
+	};
+
+	struct MatchState
+	{
+		int32_t NonTerminal;
+		int32_t Position;
+		int32_t ProductionIndex;
+		int32_t ProductionNextNonterminalIndex;
+		KnownMatchState SubMatchState;
+
+		KnownMatchState *Output;
 	};
 }
 
@@ -33,9 +50,9 @@ static void ParseRule(vector<Rule>* rules)
 		{
 			int32_t firstNonterminal = Parse::GetInt32();
 
-			array<int32_t, 2>& productions = rule.Productions[rule.NumProductions++];
-			productions[0] = firstNonterminal;
-			productions[1] = -1;
+			rule.Productions.PushBack({});
+			SmallVector<int32_t, 2>& newProductions = rule.Productions.Back();
+			newProductions.PushBack(firstNonterminal);
 
 			if (PuzzleInput::PeekChar() == '\n')
 				break;
@@ -50,7 +67,7 @@ static void ParseRule(vector<Rule>* rules)
 			else if (isdigit(PuzzleInput::PeekChar()))
 			{
 				int32_t secondNonterminal = Parse::GetInt32();
-				productions[1] = secondNonterminal;
+				newProductions.PushBack(secondNonterminal);
 			}
 
 			if (PuzzleInput::PeekChar() == '\n')
@@ -94,36 +111,30 @@ static void GetLengths(int32_t startAt, const vector<Rule>& productionRules, vec
 		// Try to work out the proper length
 		// NOTE: Left and right branches are equal length in the puzzle grammar, but we need
 		// to traverse both legs in order to have a full set of lengths
-		assert(rule.NumProductions > 0);
+		assert(rule.Productions.size() > 0);
 		uint32_t length = numeric_limits<uint32_t>::max();
 		bool everythingKnown = true;
-		for (uint32_t i = 0; i < rule.NumProductions; i++)
+		for (int32_t i = 0; i < rule.Productions.size(); i++)
 		{
-			int32_t first = rule.Productions[i][0];
-			int32_t second = rule.Productions[i][1];
+			assert(rule.Productions[i].size() > 0);
 
-			// Do we know the first production non-terminal length?
-			if ((*lengths)[first] == 0)
+			length = 0;
+			for (int32_t j = 0; j < rule.Productions[i].size(); j++)
 			{
-				nonTerminals.push_back(first);
-				everythingKnown = false;
-				break;
-			}
-
-			length = (*lengths)[first];
-
-			// Do we know the optional second production non-terminal length?
-			if (second != -1)
-			{
-				if ((*lengths)[second] == 0)
+				int32_t nextNonTerminal = rule.Productions[i][j];
+				uint32_t subLength = (*lengths)[nextNonTerminal];
+				if (subLength == 0)
 				{
-					nonTerminals.push_back(second);
+					nonTerminals.push_back(nextNonTerminal);
 					everythingKnown = false;
 					break;
 				}
 
-				length += (*lengths)[second];
+				length += subLength;
 			}
+
+			if (everythingKnown == false)
+				break;
 		}
 
 		if (everythingKnown)
@@ -134,44 +145,83 @@ static void GetLengths(int32_t startAt, const vector<Rule>& productionRules, vec
 	}
 }
 
-static bool Match(int32_t nonterminal, size_t position, const char* message, const vector<Rule>& productionRules, const vector<uint32_t>& lengths)
+static bool Match(int32_t startingTerminal, int32_t startingPosition, const char* message, const vector<Rule>& productionRules, const vector<uint32_t>& lengths)
 {
-	const Rule& rule = productionRules[nonterminal];
+	vector<MatchState> executionStack;
+	executionStack.reserve(16);
 
-	bool matches = false;
-	if (rule.Terminal)
+	KnownMatchState fullMatch = KnownMatchState::Unknown;
+
+	MatchState start;
+	start.NonTerminal = startingTerminal;
+	start.Position = startingPosition;
+	start.ProductionIndex = 0;
+	start.ProductionNextNonterminalIndex = 0;
+	start.SubMatchState = KnownMatchState::Unknown;
+	start.Output = &fullMatch;
+	executionStack.push_back(start);
+
+	while (executionStack.empty() == false)
 	{
-		matches = message[position] == rule.Terminal;
-	}
-	else
-	{
-		size_t lengthOfNonterminal = lengths[nonterminal];
-		for (size_t production = 0; production < rule.NumProductions; production++)
+		MatchState& current = executionStack.back();
+
+		const Rule& rule = productionRules[current.NonTerminal];
+		if (rule.Terminal)
 		{
-			size_t subPosition = position;
-			for (int32_t nextNonterminal : rule.Productions[production])
-			{
-				if (nextNonterminal == -1)
-					break;
+			*current.Output = (message[current.Position] == rule.Terminal) ? KnownMatchState::Matches : KnownMatchState::DoesntMatch;
+			executionStack.pop_back();
+			continue;
+		}
 
-				if (Match(nextNonterminal, subPosition, message, productionRules, lengths))
-				{
-					subPosition += lengths[nextNonterminal];
-				}
-				else
-				{
-					break;
-				}
-			}
-			if (subPosition == (position + lengthOfNonterminal))
+		int32_t currentMatchedTokenLength = 0;
+		
+		// Have we got a match?
+		if (current.SubMatchState == KnownMatchState::Matches)
+		{
+			currentMatchedTokenLength = lengths[rule.Productions[current.ProductionIndex][current.ProductionNextNonterminalIndex]];
+
+			// Try to match the next token in this production
+			current.ProductionNextNonterminalIndex++;
+
+			if (current.ProductionNextNonterminalIndex == rule.Productions[current.ProductionIndex].size())
 			{
-				matches = true;
-				break;
+				// Full match for this production
+				*current.Output = KnownMatchState::Matches;
+				executionStack.pop_back();
+				continue;
 			}
 		}
+
+		// Have we got a mismatch?
+		if (current.SubMatchState == KnownMatchState::DoesntMatch)
+		{
+			// Try the next production
+			current.ProductionIndex++;
+			current.ProductionNextNonterminalIndex = 0;
+
+			if (current.ProductionIndex == rule.Productions.size())
+			{
+				// Full mismatch
+				*current.Output = KnownMatchState::DoesntMatch;
+				executionStack.pop_back();
+				continue;
+			}
+		}
+
+		// Kick off a sub-match
+		MatchState subMatch;
+		subMatch.NonTerminal = rule.Productions[current.ProductionIndex][current.ProductionNextNonterminalIndex];
+		subMatch.Position = current.Position + currentMatchedTokenLength;
+		subMatch.ProductionIndex = 0;
+		subMatch.ProductionNextNonterminalIndex = 0;
+		subMatch.SubMatchState = KnownMatchState::Unknown;
+		subMatch.Output = &current.SubMatchState;
+		executionStack.push_back(subMatch);
+
+		current.SubMatchState = KnownMatchState::Unknown;
 	}
 
-	return matches;
+	return fullMatch == KnownMatchState::Matches;
 }
 
 void Puzzle19_A_2020()
