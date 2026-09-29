@@ -22,6 +22,7 @@
 #include "NameDictionary.h"
 #include "BFS.h"
 #include "Dijkstra.h"
+#include "ArrayWrapper2D.h"
 
 char* strdup_memarena(const char* tempBuffer);
 int32_t sprint_digits(char* dest, int32_t value);
