@@ -124,6 +124,11 @@ public:
 		return { this, static_cast<size_t>(Size) };
 	}
 
+	bool operator==(const SmallVector<TYPE, SIZE>& other) const
+	{
+		return (other.Size == Size) && (memcmp(other.Data.data(), Data.data(), Size * sizeof(TYPE)) == 0);
+	}
+
 private:
 	friend SmallVectorConstIterator<TYPE, SIZE>;
 
