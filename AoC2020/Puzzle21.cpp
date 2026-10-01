@@ -7,169 +7,234 @@ R"()";
 
 namespace Puzzle21_2020_Types
 {
+	enum : size_t
+	{
+		MAX_INGREDIENTS = 200,
+		MAX_ALLERGENS = 8,
+	};
+
+	using IngredientName = SmallVector<char, 8>;
+	using AllergenName = SmallVector<char, 12>;
+
 	struct Dish
 	{
-		vector<string> Ingredients;
-		set<string> Allergens;
+		vector<uint32_t> Ingredients;
+		vector<uint32_t> Allergens;
 	};
 }
 
 using namespace Puzzle21_2020_Types;
 
-static vector<Dish> ReadFoods(istream& input)
+template <>
+struct std::hash<IngredientName>
 {
-	regex dishFormat(R"(([^\(]+)\(contains ([^\)]+)\))");
-
-	vector<Dish> foods;
-	for (const string& line : ReadAllLines(input))
+	size_t operator()(const IngredientName& name) const noexcept
 	{
-		smatch match;
-		if (regex_match(line, match, dishFormat))
+		uint32_t hash = 0x811c9dc5;
+		for (size_t i = 0; i < name.size(); i++)
 		{
-			Dish d;
-
-			d.Ingredients = MakeEnumerator(StringSplit(match[1].str(), ' '))
-				->Select<string>([](const string& s) { return Trim(s); })
-				->ToVector();
-			sort(d.Ingredients.begin(), d.Ingredients.end());
-
-			d.Allergens = MakeEnumerator(StringSplit(match[2].str(), ','))
-				->Select<string>([](const string& s) { return Trim(s); })
-				->ToSet();
-
-			foods.emplace_back(move(d));
+			hash ^= name[i];
+			hash *= 0x01000193;
 		}
+		return hash;
 	}
-	return foods;
-}
+};
 
-static void Puzzle21_A(const string &filename)
+template <>
+struct std::hash<AllergenName>
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<Dish> dishes = ReadFoods(input);
-
-	// Pre-processing;
-	set<string> allIngredients;
-	set<string> allAllergens;
-	map<string, set<string>> allergenCandidateIngredients;
-	for (const Dish& dish : dishes)
+	size_t operator()(const AllergenName& name) const noexcept
 	{
-		allIngredients.insert(dish.Ingredients.begin(), dish.Ingredients.end());
-		allAllergens.insert(dish.Allergens.begin(), dish.Allergens.end());
-
-		for (const string& allergenListed : dish.Allergens)
+		uint32_t hash = 0x811c9dc5;
+		for (size_t i = 0; i < name.size(); i++)
 		{
-			allergenCandidateIngredients[allergenListed].insert(dish.Ingredients.begin(), dish.Ingredients.end());
+			hash ^= name[i];
+			hash *= 0x01000193;
 		}
+		return hash;
 	}
+};
 
-	// Filter down candidate ingredients to those commonly listed ingredients
-	for (const string& allergen : allAllergens)
+static Dish ReadFood(HashMap<IngredientName, uint32_t>* ingredientDictionary, HashMap<AllergenName, uint32_t>* allergenDictionary)
+{
+	Dish dish;
+	dish.Ingredients.reserve(MAX_INGREDIENTS);
+	dish.Allergens.reserve(MAX_ALLERGENS);
+
+	assert(PuzzleInput::PeekChar() != EOF);	
+
+	IngredientName ingredient;
+	for (char c : Parse::ReadUntilSeen('('))
 	{
-		for (const Dish& dish : dishes)
+		if (c == ' ')
 		{
-			if (dish.Allergens.contains(allergen) == false)
+			uint32_t ingredientId = numeric_limits<uint32_t>::max();
+			if (ingredientDictionary->TryFind(ingredient, &ingredientId) == false)
 			{
-				continue;
+				ingredientId = ingredientDictionary->Size();
+				ingredientDictionary->Insert(ingredient, ingredientId);
 			}
 
-			set<string>& candidates = allergenCandidateIngredients.at(allergen);
-
-			set<string> filteredCandidates;
-			set_intersection(candidates.begin(), candidates.end(),
-				dish.Ingredients.begin(), dish.Ingredients.end(),
-				inserter(filteredCandidates, filteredCandidates.begin()));
-
-			allergenCandidateIngredients[allergen] = move(filteredCandidates);
+			dish.Ingredients.push_back(ingredientId);
+			ingredient.Clear();
 		}
-	}
-
-	set<string> clearIngredients = allIngredients;
-	for (map<string, set<string>>::const_reference allergen : allergenCandidateIngredients)
-	{
-		for (const string& ingredient : allergen.second)
+		else
 		{
-			clearIngredients.erase(ingredient);
+			ingredient.PushBack(c);
 		}
 	}
 
-	int64_t answer = 0;
-	for (const Dish& dish : dishes)
+	Parse::DiscardExpected("contains ");
+
+	AllergenName allergen;
+	for (char c : Parse::ReadUntilSeen('\n'))
 	{
-		answer += count_if(dish.Ingredients.begin(), dish.Ingredients.end(),
-			[&clearIngredients](const string& ingredient)
+		if ((c == ',') || (c == ')'))
+		{
+			uint32_t allergenId = numeric_limits<uint32_t>::max();
+			if (allergenDictionary->TryFind(allergen, &allergenId) == false)
 			{
-				return clearIngredients.contains(ingredient);
-			});
-	}
-
-	printf("[2020] Puzzle21_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle21_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<Dish> dishes = ReadFoods(input);
-
-	// Pre-processing;
-	set<string> allIngredients;
-	set<string> allAllergens;
-	map<string, set<string>> allergenCandidateIngredients;
-	for (const Dish& dish : dishes)
-	{
-		allIngredients.insert(dish.Ingredients.begin(), dish.Ingredients.end());
-		allAllergens.insert(dish.Allergens.begin(), dish.Allergens.end());
-
-		for (const string& allergenListed : dish.Allergens)
-		{
-			allergenCandidateIngredients[allergenListed].insert(dish.Ingredients.begin(), dish.Ingredients.end());
-		}
-	}
-
-	// Filter down candidate ingredients to those commonly listed ingredients
-	for (const string& allergen : allAllergens)
-	{
-		for (const Dish& dish : dishes)
-		{
-			if (dish.Allergens.contains(allergen) == false)
-			{
-				continue;
+				allergenId = allergenDictionary->Size();
+				allergenDictionary->Insert(allergen, allergenId);
 			}
 
-			set<string>& candidates = allergenCandidateIngredients.at(allergen);
-
-			set<string> filteredCandidates;
-			set_intersection(candidates.begin(), candidates.end(),
-				dish.Ingredients.begin(), dish.Ingredients.end(),
-				inserter(filteredCandidates, filteredCandidates.begin()));
-
-			allergenCandidateIngredients[allergen] = move(filteredCandidates);
+			dish.Allergens.push_back(allergenId);
+			allergen.Clear();
+		}
+		else if (c == ' ')
+		{
+			// Ignore spaces
+		}
+		else
+		{
+			allergen.PushBack(c);
 		}
 	}
+
+	ranges::sort(dish.Ingredients);
+
+	return dish;
+}
+
+void Puzzle21_A_2020()
+{
+	HashMap<IngredientName, uint32_t> ingredientDictionary(512, {});
+	HashMap<AllergenName, uint32_t> allergenDictionary(32, {});
+
+	vector<int32_t> ingredientCounts(MAX_INGREDIENTS);
+
+	vector<vector<uint32_t>> allergenCandidates(MAX_ALLERGENS);
+	while (PuzzleInput::NextLine())
+	{
+		Dish dish = ReadFood(&ingredientDictionary, &allergenDictionary);
+
+		for (uint32_t ingredient : dish.Ingredients)
+		{
+			ingredientCounts[ingredient]++;
+		}
+
+		for (uint32_t allergen : dish.Allergens)
+		{
+			if (allergenCandidates[allergen].empty())
+			{
+				allergenCandidates[allergen] = dish.Ingredients;
+			}
+			else
+			{
+				vector<uint32_t> filteredCandidates;
+				ranges::set_intersection(allergenCandidates[allergen], dish.Ingredients, back_inserter(filteredCandidates));
+				assert(filteredCandidates.empty() == false);
+				allergenCandidates[allergen].swap(filteredCandidates);
+			}
+		}
+	}
+
+	for (const vector<uint32_t>& suspects : allergenCandidates)
+	{
+		for (uint32_t suspect : suspects)
+		{
+			ingredientCounts[suspect] = 0;
+		}
+	}
+
+	int32_t answer = accumulate(ingredientCounts.begin(), ingredientCounts.end(), 0);
+
+	PuzzleOutput::Submit(2020, 21, 1, answer);
+}
+
+void Puzzle21_B_2020()
+{
+	HashMap<IngredientName, uint32_t> ingredientDictionary(512, {});
+	HashMap<AllergenName, uint32_t> allergenDictionary(32, {});
+
+	vector<int32_t> ingredientCounts(MAX_INGREDIENTS);
+
+	vector<vector<uint32_t>> allergenCandidates(MAX_ALLERGENS);
+	while (PuzzleInput::NextLine())
+	{
+		Dish dish = ReadFood(&ingredientDictionary, &allergenDictionary);
+
+		for (uint32_t ingredient : dish.Ingredients)
+		{
+			ingredientCounts[ingredient]++;
+		}
+
+		for (uint32_t allergen : dish.Allergens)
+		{
+			if (allergenCandidates[allergen].empty())
+			{
+				allergenCandidates[allergen] = dish.Ingredients;
+			}
+			else
+			{
+				vector<uint32_t> filteredCandidates;
+				ranges::set_intersection(allergenCandidates[allergen], dish.Ingredients, back_inserter(filteredCandidates));
+				assert(filteredCandidates.empty() == false);
+				allergenCandidates[allergen].swap(filteredCandidates);
+			}
+		}
+	}
+
+	vector<string> allergenNames(MAX_ALLERGENS);
 
 	map<string, string> allergenToIngredient;
-	while (allergenToIngredient.size() != allAllergens.size())
+	for (const auto& allergen : allergenDictionary)
 	{
-		map<string, set<string>>::const_iterator knownAllergen =
-			find_if(allergenCandidateIngredients.begin(), allergenCandidateIngredients.end(),
-				[](map<string, set<string>>::const_reference mapping)
+		string allergenName(&allergen.first[0], allergen.first.size());
+		allergenToIngredient.insert({ allergenName, {} });
+		allergenNames[allergen.second].swap(allergenName);
+	}
+
+	vector<uint32_t> ingredientContainsAllergen(MAX_INGREDIENTS, numeric_limits<uint32_t>::max());
+	for (int32_t i = 0; i < MAX_ALLERGENS; i++)
+	{
+		vector<vector<uint32_t>>::const_iterator knownAllergen =
+			find_if(allergenCandidates.begin(), allergenCandidates.end(),
+				[](vector<vector<uint32_t>>::const_reference candidates)
 				{
-					return mapping.second.size() == 1;
+					return candidates.size() == 1;
 				});
-		assert(knownAllergen != allergenCandidateIngredients.end());
+		assert(knownAllergen != allergenCandidates.end());
 
-		string ingredientWithAllergen = *knownAllergen->second.begin();
-		allergenToIngredient[knownAllergen->first] = ingredientWithAllergen;
+		uint32_t ingredient = knownAllergen->front();
+		ingredientContainsAllergen[ingredient] = static_cast<uint32_t>(distance(allergenCandidates.cbegin(), knownAllergen));
 
-		for (map<string, set<string>>::reference candidates : allergenCandidateIngredients)
+		for (vector<vector<uint32_t>>::reference candidates : allergenCandidates)
 		{
-			candidates.second.erase(ingredientWithAllergen);
+			vector<uint32_t>::const_iterator it = ranges::find(candidates, ingredient);
+			if (it != candidates.end())
+			{
+				candidates.erase(it);
+			}
+		}
+	}
+
+	for (const auto& ingredient : ingredientDictionary)
+	{
+		uint32_t containsAllergen = ingredientContainsAllergen[ingredient.second];
+		if (containsAllergen != numeric_limits<uint32_t>::max())
+		{
+			allergenToIngredient[allergenNames[containsAllergen]] = string(&ingredient.first[0], ingredient.first.size());
 		}
 	}
 
@@ -183,21 +248,5 @@ static void Puzzle21_B(const string& filename)
 		answer += allergenPair.second;
 	}
 
-	printf("[2020] Puzzle21_B: %s\n", answer.c_str());
-}
-
-void Puzzle21_A_2020()
-{
-	Puzzle21_A(R"(z:\AoCInput\2020\Puzzle21.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 21, 1, answer);
-}
-
-void Puzzle21_B_2020()
-{
-	Puzzle21_B(R"(z:\AoCInput\2020\Puzzle21.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2020, 21, 2, answer);
+	PuzzleOutput::Submit(2020, 21, 2, answer.c_str());
 }
