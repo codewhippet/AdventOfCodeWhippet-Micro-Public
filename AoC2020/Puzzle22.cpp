@@ -2,203 +2,287 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle22_2020_Types
 {
-	struct GameState
+	class Hand
 	{
-		deque<int> PlayerHands[2];
+	public:
+		Hand() = default;
+
+		Hand(const Hand& other, int32_t numToCopy)
+		{
+			for (int32_t i = 0; i < numToCopy; i++)
+			{
+				CardsNew[End++ & 63] = other.CardsNew[(other.Begin + i) & 63];
+			}
+		}
+
+		bool IsEmpty() const
+		{
+			return (Begin == End);
+		}
+
+		int32_t NumCards() const
+		{
+			return (End - Begin);
+		}
+
+		int32_t GetFrontCard()
+		{
+			int32_t card = CardsNew[Begin++ & 63];
+			return card;
+		}
+
+		void InsertCardAtBack(int32_t card)
+		{
+			CardsNew[End++ & 63] = card;
+		}
+
+		int32_t Score() const
+		{
+			int32_t score = 0;
+
+			int32_t numCards = End - Begin;
+			for (int32_t i = 0; i < (End - Begin); i++)
+			{
+				int32_t card = CardsNew[(Begin + i) & 63];
+				score += card * numCards;
+				numCards--;
+			}
+
+			return score;
+		}
+
+		bool operator==(const Hand& other) const
+		{
+			if ((End - Begin) != (other.End - other.Begin))
+			{
+				return false;
+			}
+
+			int32_t numCards = End - Begin;
+			for (int32_t i = 0; i < numCards; i++)
+			{
+				if (CardsNew[(Begin + i) & 63] != other.CardsNew[(other.Begin + i) & 63])
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+	private:
+		array<int32_t, 64> CardsNew;
+		int32_t Begin = 0;
+		int32_t End = 0;
 	};
 
-	bool operator<(const GameState& a, const GameState& b)
+	struct WinHistory
 	{
-		if (a.PlayerHands[0] != b.PlayerHands[0]) return a.PlayerHands[0] < b.PlayerHands[0];
-		return a.PlayerHands[1] < b.PlayerHands[1];
-	}
+		WinHistory()
+			: HistoryBits(12 * 1024 / 8)
+		{
+		}
+
+		void Set(int32_t round, int32_t winner)
+		{
+			assert((winner == 0) || (winner == 1));
+
+			int32_t chunk = round >> 5;
+			int32_t bitIndex = round & (32 - 1);
+			uint32_t bit = winner << bitIndex;
+
+			HistoryBits[chunk] = (HistoryBits[chunk] & ~bit) | bit;
+		}
+
+		int32_t Get(int32_t round)
+		{
+			int32_t chunk = round >> 5;
+			int32_t bitIndex = round & (32 - 1);
+			uint32_t bit = 1 << bitIndex;
+
+			return (HistoryBits[chunk] & bit ? 1 : 0);
+		}
+
+		vector<uint32_t> HistoryBits;
+	};
+
+	struct ExecutionState
+	{
+		array<Hand, 2> PlayerHands;
+		array<int32_t, 2> PlayerCards;
+		int32_t RoundWinner = -1;
+
+		int32_t HareRound = 0;
+		int32_t TortoiseRound = 0;
+		array<Hand, 2> TortoiseHands;
+		WinHistory Winners;
+
+		int32_t *Return = nullptr;
+	};
 }
 
 using namespace Puzzle22_2020_Types;
 
-static GameState ReadStartingState(istream& input)
+static Hand ReadPlayerHand()
 {
-	GameState state;
+	Hand ret;
 
-	int handToRead = -1;
-	for (const string& line : ReadAllLines(input))
+	PuzzleInput::DropLine();
+	PuzzleInput::NextLine();
+
+	while (isdigit(PuzzleInput::PeekChar()))
 	{
-		if (line.substr(0, sizeof("Player") - 1) == "Player")
+		ret.InsertCardAtBack(Parse::GetInt32());
+		PuzzleInput::NextLine();
+	}
+
+	return ret;
+}
+
+static int32_t PlayGame(const array<Hand, 2>& startingHands, Hand* winningHand)
+{
+	vector<ExecutionState> exec;
+	exec.reserve(8);
+
+	int32_t overallWinner = -1;	
+
+	exec.push_back({});
+	exec.back().PlayerHands = startingHands;
+	exec.back().TortoiseHands = exec.back().PlayerHands;
+	exec.back().Return = &overallWinner;
+
+	while (exec.empty() == false)
+	{
+		ExecutionState& current = exec.back();
+
+		if (current.RoundWinner != -1)
 		{
-			handToRead++;
+			current.PlayerHands[current.RoundWinner].InsertCardAtBack(current.PlayerCards[current.RoundWinner]);
+			current.PlayerHands[current.RoundWinner].InsertCardAtBack(current.PlayerCards[1 - current.RoundWinner]);
+
+			current.Winners.Set(current.HareRound++, current.RoundWinner);
+		}
+
+		if (current.PlayerHands[0].IsEmpty())
+		{
+			if (exec.size() == 1)
+			{
+				*winningHand = current.PlayerHands[1];
+			}
+
+			*current.Return = 1;
+			exec.pop_back();
 			continue;
 		}
 
-		int card;
-		int cardsScanned = sscanf(line.c_str(), "%d", &card);
-		if (cardsScanned == 1)
+		if (current.PlayerHands[1].IsEmpty())
 		{
-			state.PlayerHands[handToRead].push_back(card);
-		}
-	}
+			if (exec.size() == 1)
+			{
+				*winningHand = current.PlayerHands[0];
+			}
 
-	return state;
-}
-
-static GameState CopyStateForRecursion(const GameState& oldState, int player1Card, int player2Card)
-{
-	GameState newState;
-
-	newState.PlayerHands[0].insert(newState.PlayerHands[0].end(), oldState.PlayerHands[0].begin(), oldState.PlayerHands[0].begin() + player1Card);
-	newState.PlayerHands[1].insert(newState.PlayerHands[1].end(), oldState.PlayerHands[1].begin(), oldState.PlayerHands[1].begin() + player2Card);
-
-	return newState;
-}
-
-static int PlayGame(GameState* state, map<GameState, int> *globalCache)
-{
-	map<GameState, int>::const_iterator cachedResult = globalCache->find(*state);
-	if (cachedResult != globalCache->end())
-	{
-		return cachedResult->second;
-	}
-
-	GameState startingState = *state;
-
-	set<GameState> seenStates;
-
-	int winner = -1;
-	while (true)
-	{
-		if (state->PlayerHands[0].empty())
-		{
-			winner = 1;
-			break;
-		}
-		if (state->PlayerHands[1].empty())
-		{
-			winner = 0;
-			break;
+			*current.Return = 0;
+			exec.pop_back();
+			continue;
 		}
 
 		// Stop infinite games
-		if (seenStates.contains(*state))
+		if (current.HareRound > 0)
 		{
-			winner = 0;
-			break;
-		}
+			assert(current.HareRound > current.TortoiseRound);
 
-		seenStates.insert(*state);
+			if (current.PlayerHands == current.TortoiseHands)
+			{
+				*current.Return = 0;
+				exec.pop_back();
+				continue;
+			}
+
+			if (current.HareRound & 1)
+			{
+				array<int32_t, 2> tortoiseCards;
+				tortoiseCards[0] = current.TortoiseHands[0].GetFrontCard();
+				tortoiseCards[1] = current.TortoiseHands[1].GetFrontCard();
+				assert(tortoiseCards[0] != tortoiseCards[1]);
+
+				int32_t previousWinner = current.Winners.Get(current.TortoiseRound);
+
+				current.TortoiseHands[previousWinner].InsertCardAtBack(tortoiseCards[previousWinner]);
+				current.TortoiseHands[previousWinner].InsertCardAtBack(tortoiseCards[1 - previousWinner]);
+
+				current.TortoiseRound++;
+			}
+		}
 
 		// Draw
-		int playerCards[2];
-		playerCards[0] = state->PlayerHands[0].front();
-		playerCards[1] = state->PlayerHands[1].front();
-		assert(playerCards[0] != playerCards[1]);
+		current.PlayerCards[0] = current.PlayerHands[0].GetFrontCard();
+		current.PlayerCards[1] = current.PlayerHands[1].GetFrontCard();
+		assert(current.PlayerCards[0] != current.PlayerCards[1]);
 
-		state->PlayerHands[0].pop_front();
-		state->PlayerHands[1].pop_front();
-
-		int winningPlayer = -1;
+		current.RoundWinner = -1;
 
 		// Should we recurse?
-		if ((state->PlayerHands[0].size() >= playerCards[0]) &&
-			(state->PlayerHands[1].size() >= playerCards[1]))
+		if ((current.PlayerHands[0].NumCards() >= current.PlayerCards[0]) &&
+			(current.PlayerHands[1].NumCards() >= current.PlayerCards[1]))
 		{
-			GameState newState = CopyStateForRecursion(*state, playerCards[0], playerCards[1]);
-			winningPlayer = PlayGame(&newState, globalCache);
+			exec.push_back({});
+			exec.back().PlayerHands[0] = Hand(current.PlayerHands[0], current.PlayerCards[0]);
+			exec.back().PlayerHands[1] = Hand(current.PlayerHands[1], current.PlayerCards[1]);
+			exec.back().TortoiseHands = exec.back().PlayerHands;
+			exec.back().Return = &current.RoundWinner;
 		}
 		else
 		{
-			winningPlayer = (playerCards[0] > playerCards[1] ? 0 : 1);
+			current.RoundWinner = (current.PlayerCards[0] > current.PlayerCards[1] ? 0 : 1);
 		}
-
-		state->PlayerHands[winningPlayer].push_back(playerCards[winningPlayer]);
-		state->PlayerHands[winningPlayer].push_back(playerCards[1 - winningPlayer]);
 	}
 
-	globalCache->insert(make_pair(startingState, winner));
-	return winner;
-}
-
-static void Puzzle22_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	GameState game = ReadStartingState(input);
-
-	while ((game.PlayerHands[0].empty() == false) &&
-		(game.PlayerHands[1].empty() == false))
-	{
-		int player1Card = game.PlayerHands[0].front();
-		int player2Card = game.PlayerHands[1].front();
-		assert(player1Card != player2Card);
-
-		if (player1Card > player2Card)
-		{
-			game.PlayerHands[0].push_back(player1Card);
-			game.PlayerHands[0].push_back(player2Card);
-		}
-		else
-		{
-			game.PlayerHands[1].push_back(player2Card);
-			game.PlayerHands[1].push_back(player1Card);
-		}
-
-		game.PlayerHands[0].pop_front();
-		game.PlayerHands[1].pop_front();
-	}
-
-	int winnerIndex = (game.PlayerHands[0].empty() ? 1 : 0);
-	size_t numCards = game.PlayerHands[winnerIndex].size();
-
-	int64_t answer = 0;
-	for (int card : game.PlayerHands[winnerIndex])
-	{
-		answer += card * numCards;
-		numCards--;
-	}
-
-	printf("[2020] Puzzle22_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle22_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	GameState game = ReadStartingState(input);
-
-	map<GameState, int> globalCache;
-	int winner = PlayGame(&game, &globalCache);
-
-	size_t numCards = game.PlayerHands[winner].size();
-
-	int64_t answer = 0;
-	for (int card : game.PlayerHands[winner])
-	{
-		answer += card * numCards;
-		numCards--;
-	}
-
-	printf("[2020] Puzzle22_B: %" PRId64 "\n", answer);
+	return overallWinner;
 }
 
 void Puzzle22_A_2020()
 {
-	Puzzle22_A(R"(z:\AoCInput\2020\Puzzle22.txt)");
+	array<Hand, 2> playerHands;
+	playerHands[0] = ReadPlayerHand();
+	playerHands[1] = ReadPlayerHand();
 
-	int32_t answer = 0;
+	while ((playerHands[0].IsEmpty() == false) && (playerHands[1].IsEmpty() == false))
+	{
+		int32_t player1Card = playerHands[0].GetFrontCard();
+		int32_t player2Card = playerHands[1].GetFrontCard();
+		assert(player1Card != player2Card);
+
+		if (player1Card > player2Card)
+		{
+			playerHands[0].InsertCardAtBack(player1Card);
+			playerHands[0].InsertCardAtBack(player2Card);
+		}
+		else
+		{
+			playerHands[1].InsertCardAtBack(player2Card);
+			playerHands[1].InsertCardAtBack(player1Card);
+		}
+	}
+
+	int32_t winnerIndex = (playerHands[0].IsEmpty() ? 1 : 0);
+	int32_t answer = playerHands[winnerIndex].Score();
+
 	PuzzleOutput::Submit(2020, 22, 1, answer);
 }
 
 void Puzzle22_B_2020()
 {
-	Puzzle22_B(R"(z:\AoCInput\2020\Puzzle22.txt)");
+	array<Hand, 2> startingHands;
+	startingHands[0] = ReadPlayerHand();
+	startingHands[1] = ReadPlayerHand();
 
-	int32_t answer = 0;
+	Hand winningHand;
+	PlayGame(startingHands, &winningHand);
+
+	int32_t answer = winningHand.Score();
+
 	PuzzleOutput::Submit(2020, 22, 2, answer);
 }
