@@ -2,197 +2,166 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle04_2021_Types
 {
-	struct Board
+	enum : size_t
 	{
-		map<int, pair<int, int>> Unchecked;
-		map<int, pair<int, int>> Checked;
+		CARD_SIZE = 5
+	};
+
+	struct NumberLocation
+	{
+		int32_t Board;
+		int32_t Row;
+		int32_t Column;
+	};
+
+	struct BoardState
+	{
+		int32_t HasBingo = 0;
+		array<int32_t, CARD_SIZE> RowCounts = {};
+		array<int32_t, CARD_SIZE> ColumnCounts = {};
 	};
 }
 
 using namespace Puzzle04_2021_Types;
 
-static bool IsBingoFast(const Board& b)
+void Puzzle04_A_2021()
 {
-	int rowCounts[5] = { 0 };
-	int columnCounts[5] = { 0 };
-	for (map<int, pair<int, int>>::const_reference cell : b.Checked)
+	const size_t expectedRandomNumbers = 100;
+	const size_t numNumbers = 100;
+	const size_t numBoards = 100;
+
+	vector<int32_t> randomNumbers;
+	randomNumbers.reserve(expectedRandomNumbers);
+	while (PuzzleInput::PeekChar() != '\n')
 	{
-		rowCounts[cell.second.first]++;
-		columnCounts[cell.second.second]++;
+		randomNumbers.push_back(Parse::GetInt32());
 	}
-	return (max(
-		*max_element(&rowCounts[0], &rowCounts[5]),
-		*max_element(&columnCounts[0], &columnCounts[5]))) == 5;
-}
 
-static bool IsBingo(const Board& b)
-{
-	return IsBingoFast(b);
-}
+	PuzzleInput::NextLine();
 
-static bool ReadBoard(istream& input, Board* pBoard)
-{
-	for (int row = 0; row < 5; row++)
+	vector<SmallVector<NumberLocation, 40>> numberLocations(numNumbers);
+	vector<SmallVector<int32_t, CARD_SIZE * CARD_SIZE>> boardNumbers(numBoards);
+	for (int32_t board = 0; PuzzleInput::PeekChar() != EOF; board++)
 	{
-		for (int column = 0; column < 5; column++)
+		for (int32_t row = 0; row < CARD_SIZE; row++)
 		{
-			int value;
-			if (!(input >> value))
-				return false;
-
-			assert(pBoard->Unchecked.find(value) == pBoard->Unchecked.end());
-
-			pBoard->Unchecked[value] = make_pair(row, column);
-		}
-	}
-	return true;
-}
-
-static void Puzzle04_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	string randomSequenceSource;
-	getline(input, randomSequenceSource);
-
-	vector<Board> boards;
-
-	while (true)
-	{
-		Board b;
-		if (ReadBoard(input, &b) == false)
-			break;
-		boards.emplace_back(move(b));
-	}
-
-	// Run the bingo
-	for (char& c : randomSequenceSource)
-	{
-		if (c == ',')
-			c = ' ';
-	}
-	istringstream randomSequence(randomSequenceSource);
-
-	int64_t answer = 0;
-	while (answer == 0)
-	{
-		int call;
-		if (!(randomSequence >> call))
-			break;
-
-		for (Board& b : boards)
-		{
-			map<int, pair<int, int>>::const_iterator found = b.Unchecked.find(call);
-			if (found != b.Unchecked.end())
+			for (int32_t column = 0; column < CARD_SIZE; column++)
 			{
-				b.Checked[found->first] = found->second;
-				b.Unchecked.erase(found);
+				int32_t value = Parse::GetInt32();
+				numberLocations[value].PushBack({ board, row, column });
+				boardNumbers[board].PushBack(value);
 			}
+		}
 
-			if (IsBingo(b))
+		PuzzleInput::NextLine();
+	}
+
+	int32_t answer = -1;
+
+	vector<int32_t> numberScores(numNumbers, 1);
+
+	vector<BoardState> boards(numBoards);
+	for (int32_t call : randomNumbers)
+	{
+		numberScores[call] = 0;
+
+		for (const NumberLocation& location : numberLocations[call])
+		{
+			BoardState& board = boards[location.Board];
+			int32_t rowCount = ++board.RowCounts[location.Row];
+			int32_t columnCount = ++board.ColumnCounts[location.Column];
+			if ((rowCount == 5) || (columnCount == 5))
 			{
-				int uncheckedScore = 0;
-				for (map<int, pair<int, int>>::const_reference& cell : b.Unchecked)
+				int32_t uncheckedSum = 0;
+				for (int32_t number : boardNumbers[location.Board])
 				{
-					uncheckedScore += cell.first;
+					uncheckedSum += number * numberScores[number];
 				}
-				answer = uncheckedScore * call;
+
+				answer = uncheckedSum * call;
 				break;
 			}
 		}
-	}
 
-	printf("[2021] Puzzle04_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle04_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	string randomSequenceSource;
-	getline(input, randomSequenceSource);
-
-	vector<Board> boards;
-
-	while (true)
-	{
-		Board b;
-		if (ReadBoard(input, &b) == false)
+		if (answer != -1)
 			break;
-		boards.emplace_back(move(b));
 	}
-
-	// Run the bingo
-	for (char& c : randomSequenceSource)
-	{
-		if (c == ',')
-			c = ' ';
-	}
-	istringstream randomSequence(randomSequenceSource);
-
-	vector<pair<int, int>> winningOrder;
-	while (winningOrder.size() < boards.size())
-	{
-		int call;
-		if (!(randomSequence >> call))
-			break;
-
-		for (int i = 0; i < boards.size(); i++)
-		{
-			if (find_if(winningOrder.begin(), winningOrder.end(), [i](const pair<int, int>& pair) { return i == pair.first; }) != winningOrder.end())
-				continue;
-
-			Board& b = boards[i];
-
-			map<int, pair<int, int>>::const_iterator found = b.Unchecked.find(call);
-			if (found != b.Unchecked.end())
-			{
-				b.Checked[found->first] = found->second;
-				b.Unchecked.erase(found);
-			}
-
-			if (IsBingo(b))
-			{
-				winningOrder.push_back(make_pair(i, call));
-			}
-		}
-	}
-
-	int lastBoard = winningOrder.rbegin()->first;
-	int lastCall = winningOrder.rbegin()->second;
-
-	int uncheckedScore = 0;
-	for (map<int, pair<int, int>>::const_reference& cell : boards[lastBoard].Unchecked)
-	{
-		uncheckedScore += cell.first;
-	}
-
-	int64_t answer = uncheckedScore * lastCall;
-
-	printf("[2021] Puzzle04_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle04_A_2021()
-{
-	Puzzle04_A(R"(z:\AoCInput\2021\Puzzle04.txt)");
-
-	int32_t answer = 0;
+	
 	PuzzleOutput::Submit(2021, 4, 1, answer);
 }
 
 void Puzzle04_B_2021()
 {
-	Puzzle04_B(R"(z:\AoCInput\2021\Puzzle04.txt)");
+	const size_t expectedRandomNumbers = 100;
+	const size_t numNumbers = 100;
+	const size_t numBoards = 100;
 
-	int32_t answer = 0;
+	vector<int32_t> randomNumbers;
+	randomNumbers.reserve(expectedRandomNumbers);
+	while (PuzzleInput::PeekChar() != '\n')
+	{
+		randomNumbers.push_back(Parse::GetInt32());
+	}
+
+	PuzzleInput::NextLine();
+
+	vector<SmallVector<NumberLocation, 40>> numberLocations(numNumbers);
+	vector<SmallVector<int32_t, CARD_SIZE * CARD_SIZE>> boardNumbers(numBoards);
+	for (int32_t board = 0; PuzzleInput::PeekChar() != EOF; board++)
+	{
+		for (int32_t row = 0; row < CARD_SIZE; row++)
+		{
+			for (int32_t column = 0; column < CARD_SIZE; column++)
+			{
+				int32_t value = Parse::GetInt32();
+				numberLocations[value].PushBack({ board, row, column });
+				boardNumbers[board].PushBack(value);
+			}
+		}
+
+		PuzzleInput::NextLine();
+	}
+
+	int32_t answer = -1;
+
+	vector<int32_t> numberScores(numNumbers, 1);
+
+	int32_t bingoCount = 0;
+
+	vector<BoardState> boards(numBoards);
+	for (int32_t call : randomNumbers)
+	{
+		numberScores[call] = 0;
+
+		for (const NumberLocation& location : numberLocations[call])
+		{
+			BoardState& board = boards[location.Board];
+			int32_t rowCount = ++board.RowCounts[location.Row];
+			int32_t columnCount = ++board.ColumnCounts[location.Column];
+			bool bingoNow = (rowCount == 5) || (columnCount == 5);
+			bool newBingo = bingoNow && !board.HasBingo;
+			if (newBingo)
+			{
+				board.HasBingo = true;
+				if (++bingoCount == numBoards)
+				{
+					int32_t uncheckedSum = 0;
+					for (int32_t number : boardNumbers[location.Board])
+					{
+						uncheckedSum += number * numberScores[number];
+					}
+
+					answer = uncheckedSum * call;
+					break;
+				}
+			}
+		}
+
+		if (answer != -1)
+			break;
+	}
+
 	PuzzleOutput::Submit(2021, 4, 2, answer);
 }
