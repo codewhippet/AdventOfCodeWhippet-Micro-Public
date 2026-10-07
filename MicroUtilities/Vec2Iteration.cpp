@@ -77,14 +77,25 @@ uLineIterator<VEC2_TYPE> uLineInclusiveRange<VEC2_TYPE>::end() const
 template<typename VEC2_TYPE>
 VEC2_TYPE uLineInclusiveRange<VEC2_TYPE>::GetDirection() const
 {
-	if (First.X == Last.X)
+	// Special case: if First and Last are the same we need to pick an arbitrary non-zero direction
+	// to make sure the sentinel isn't the same as the starting point
+	if (First == Last)
 	{
-		return (First.Y < Last.Y) ? VEC2_TYPE::Down() : VEC2_TYPE::Up();
+		return VEC2_TYPE::Right();
 	}
-	else
-	{
-		return (First.X < Last.X) ? VEC2_TYPE::Right() : VEC2_TYPE::Left();
-	}
+
+	VEC2_TYPE direction{};
+
+	if (First.X < Last.X)
+		direction = direction + VEC2_TYPE::Right();
+	if (First.X > Last.X)
+		direction = direction + VEC2_TYPE::Left();
+	if (First.Y < Last.Y)
+		direction = direction + VEC2_TYPE::Down();
+	if (First.Y > Last.Y)
+		direction = direction + VEC2_TYPE::Up();
+
+	return direction;
 }
 
 static_assert(std::ranges::input_range<uLineInclusiveRange<Vec2Int>>);
