@@ -2,121 +2,127 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle05_2021_Types
 {
+	struct AABB
+	{
+		Vec2Int Begin;
+		Vec2Int End;
+
+		bool Contains(const Vec2Int& v) const
+		{
+			if (v.X < Begin.X)
+				return false;
+			if (v.X >= End.X)
+				return false;
+			if (v.Y < Begin.Y)
+				return false;
+			if (v.Y >= End.Y)
+				return false;
+
+			return true;
+		}
+	};
 }
 
 using namespace Puzzle05_2021_Types;
 
-static void Puzzle05_A(const string& filename)
+static vector<pair<Vec2Int, Vec2Int>> ReadCoords()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	const size_t expectedNumCoords = 500;
 
-	vector<string> coords = ReadAllLines(input);
+	vector<pair<Vec2Int, Vec2Int>> coords;
+	coords.reserve(expectedNumCoords);
 
-	map<pair<int, int>, int> oceanFloor;
-	for (vector<string>::const_reference coord : coords)
+	while (PuzzleInput::NextLine())
 	{
-		pair<int, int> start;
-		pair<int, int> stop;
-		int parsed = sscanf(coord.c_str(), "%d,%d -> %d,%d",
-			&start.first, &start.second,
-			&stop.first, &stop.second);
-		if (parsed != 4)
-		{
-			continue;
-		}
-
-		vector<pair<int, int>> lineElements;
-		if (start.first != stop.first && start.second == stop.second)
-		{
-			// Horizontal
-			int first = min(start.first, stop.first);
-			int last = max(start.first, stop.first);
-			lineElements = Enumerable::Range(first, last - first + 1)
-				->Select<pair<int, int>>([column = start.second](const int& row) { return make_pair(row, column); })
-				->ToVector();
-		}
-
-		if (start.first == stop.first && start.second != stop.second)
-		{
-			// Vertical
-			int first = min(start.second, stop.second);
-			int last = max(start.second, stop.second);
-			lineElements = Enumerable::Range(first, last - first + 1)
-				->Select<pair<int, int>>([row = start.first](const int& column) { return make_pair(row, column); })
-				->ToVector();
-		}
-
-		for (vector<pair<int, int>>::const_reference element : lineElements)
-		{
-			oceanFloor[element]++;
-		}
+		coords.push_back({ { Parse::GetInt32(), Parse::GetInt32() }, { Parse::GetInt32(), Parse::GetInt32() } });
 	}
 
-	int64_t answer = (int)count_if(oceanFloor.begin(), oceanFloor.end(),
-		[](map<pair<int, int>, int>::const_reference floorElement)
-		{
-			return floorElement.second > 1;
-		});
-
-	printf("[2021] Puzzle05_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle05_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> coords = ReadAllLines(input);
-
-	map<Point2, int> oceanFloor;
-	for (vector<string>::const_reference coord : coords)
-	{
-		Point2 start;
-		Point2 stop;
-		int parsed = sscanf(coord.c_str(), "%" SCNd64 ",%" SCNd64 " -> %" SCNd64 ",%" SCNd64,
-			&start.X, &start.Y,
-			&stop.X, &stop.Y);
-		if (parsed != 4)
-		{
-			continue;
-		}
-
-		vector<Point2> lineElements = Enumerable::Line(start, stop)->ToVector();
-		for (vector<Point2>::const_reference element : lineElements)
-		{
-			oceanFloor[element]++;
-		}
-	}
-
-	int64_t answer = (int)count_if(oceanFloor.begin(), oceanFloor.end(),
-		[](map<Point2, int>::const_reference floorElement)
-		{
-			return floorElement.second > 1;
-		});
-
-	printf("[2021] Puzzle05_B: %" PRId64 "\n", answer);
+	return coords;
 }
 
 void Puzzle05_A_2021()
 {
-	Puzzle05_A(R"(z:\AoCInput\2021\Puzzle05.txt)");
+	vector<pair<Vec2Int, Vec2Int>> coords = ReadCoords();
+
+	const int32_t windowSize = 250;
+	vector<int16_t> windowBuffer(windowSize * windowSize);
+	ArrayWrapper2D<int16_t> window(windowBuffer.data(), windowSize, windowSize);
+
+	const int32_t expectedMaxCoord = 1000;
+	static_assert((expectedMaxCoord % windowSize) == 0);
+	const int32_t numWindows = expectedMaxCoord / windowSize;
 
 	int32_t answer = 0;
+	for (int32_t windowY = 0; windowY < numWindows; windowY++)
+	{
+		for (int32_t windowX = 0; windowX < numWindows; windowX++)
+		{
+			const Vec2Int windowOrigin{ windowX * windowSize, windowY * windowSize };
+			const Vec2Int windowEnd = windowOrigin + Vec2Int{ windowSize, windowSize };
+			const AABB windowArea{ windowOrigin, windowEnd };
+			
+			for (const auto& line : coords)
+			{
+				if ((line.first.X == line.second.X) || (line.first.Y == line.second.Y))
+				{
+					for (const auto& p : uLineInclusiveRange{ line.first, line.second })
+					{
+						if (windowArea.Contains(p))
+						{
+							window(p - windowOrigin)++;
+						}
+					}
+				}
+			}
+
+			answer += static_cast<int32_t>(ranges::count_if(windowBuffer, [](int16_t count) { return count > 1; }));
+
+			ranges::fill(windowBuffer, int16_t{ 0 });
+		}
+	}
+
 	PuzzleOutput::Submit(2021, 5, 1, answer);
 }
 
 void Puzzle05_B_2021()
 {
-	Puzzle05_B(R"(z:\AoCInput\2021\Puzzle05.txt)");
+	vector<pair<Vec2Int, Vec2Int>> coords = ReadCoords();
+
+	const int32_t windowSize = 250;
+	vector<int16_t> windowBuffer(windowSize * windowSize);
+	ArrayWrapper2D<int16_t> window(windowBuffer.data(), windowSize, windowSize);
+
+	const int32_t expectedMaxCoord = 1000;
+	static_assert((expectedMaxCoord % windowSize) == 0);
+	const int32_t numWindows = expectedMaxCoord / windowSize;
 
 	int32_t answer = 0;
+	for (int32_t windowY = 0; windowY < numWindows; windowY++)
+	{
+		for (int32_t windowX = 0; windowX < numWindows; windowX++)
+		{
+			const Vec2Int windowOrigin{ windowX * windowSize, windowY * windowSize };
+			const Vec2Int windowEnd = windowOrigin + Vec2Int{ windowSize, windowSize };
+			const AABB windowArea{ windowOrigin, windowEnd };
+			
+			for (const auto& line : coords)
+			{
+				for (const auto& p : uLineInclusiveRange{ line.first, line.second })
+				{
+					if (windowArea.Contains(p))
+					{
+						window(p - windowOrigin)++;
+					}
+				}
+			}
+
+			answer += static_cast<int32_t>(ranges::count_if(windowBuffer, [](int16_t count) { return count > 1; }));
+
+			ranges::fill(windowBuffer, int16_t{ 0 });
+		}
+	}
+
 	PuzzleOutput::Submit(2021, 5, 2, answer);
 }
