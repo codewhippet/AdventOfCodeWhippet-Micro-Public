@@ -2,21 +2,18 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle25_2020_Types
 {
 }
 
 using namespace Puzzle25_2020_Types;
 
-static size_t FindLoopSize(size_t subjectNumber, size_t targetNumber)
+static uint32_t FindLoopSize(uint32_t subjectNumber, uint32_t targetNumber, uint32_t mod)
 {
-	size_t workingValue = 1;
-	for (size_t loopSize = 0; loopSize < 20201227; loopSize++)
+	uint64_t workingValue = 1;
+	for (uint32_t loopSize = 0; loopSize < mod; loopSize++)
 	{
-		workingValue = (workingValue * subjectNumber) % 20201227;
+		workingValue = (workingValue * subjectNumber) % mod;
 		if (workingValue == targetNumber)
 		{
 			return loopSize + 1;
@@ -26,48 +23,31 @@ static size_t FindLoopSize(size_t subjectNumber, size_t targetNumber)
 	return 0;
 }
 
-static size_t Transform(size_t subjectNumber, size_t loopSize)
+static uint32_t PowMod(uint64_t base, uint32_t exp, uint32_t mod)
 {
-	size_t workingValue = 1;
-	for (size_t i = 0; i < loopSize; i++)
+	uint64_t result = 1;
+	base = base % mod;
+	while (exp)
 	{
-		workingValue = (workingValue * subjectNumber) % 20201227;
+		if (exp & 1)
+		{
+			result = (result * base) % mod;
+		}
+		exp >>= 1;
+		base = (base * base) % mod;
 	}
-
-	return workingValue;
-}
-
-static void Puzzle25_A(const string &filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const size_t cardPublicKey = atoll(ReadSingleLine(input).c_str());
-	const size_t doorPublicKey = atoll(ReadSingleLine(input).c_str());
-
-	const size_t cardLoopSize = FindLoopSize(7, cardPublicKey);
-	const size_t doorLoopSize = FindLoopSize(7, doorPublicKey);
-
-	assert(Transform(7, cardLoopSize) == cardPublicKey);
-	assert(Transform(7, doorLoopSize) == doorPublicKey);
-
-	const size_t cardTransform = Transform(doorPublicKey, cardLoopSize);
-	const size_t doorTransform = Transform(cardPublicKey, doorLoopSize);
-
-	assert(cardTransform == doorTransform);
-	(void)doorTransform;
-
-	const int64_t answer = cardTransform;
-
-	printf("[2020] Puzzle25_A: %" PRId64 "\n", answer);
+	return static_cast<uint32_t>(result);
 }
 
 void Puzzle25_A_2020()
 {
-	Puzzle25_A(R"(z:\AoCInput\2020\Puzzle25.txt)");
+	const uint32_t cardPublicKey = Parse::GetUint32();
+	const uint32_t doorPublicKey = Parse::GetUint32();
 
-	int32_t answer = 0;
+	const uint32_t cardLoopSize = FindLoopSize(7, cardPublicKey, 20201227);
+	const uint32_t cardTransform = PowMod(doorPublicKey, cardLoopSize, 20201227);
+
+	int32_t answer = cardTransform;
 	PuzzleOutput::Submit(2020, 25, 1, answer);
 }
 
