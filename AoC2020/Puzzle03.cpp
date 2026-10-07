@@ -41,7 +41,7 @@ void Puzzle03_B_2020()
 		Vec2Int{ 1, 2 },
 	};
 
-	uint64_t answer = 1;
+	int64_t answer = 1;
 	for (const Vec2Int& slope : slopes)
 	{
 		int32_t treesEncountered = 0;
