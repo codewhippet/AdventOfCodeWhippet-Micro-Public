@@ -2,141 +2,125 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle03_2021_Types
 {
 }
 
 using namespace Puzzle03_2021_Types;
 
-static pair<int, int> CountZerosAndOnes(const vector<string>& lines, int bitIndex)
+static pair<int32_t, int32_t> CountZerosAndOnes(const ranges::subrange<vector<uint32_t>::iterator>& lines, uint32_t testBit)
 {
-	int oneCount = 0;
-	for (const string& line : lines)
+	int32_t oneCount = 0;
+	for (uint32_t line : lines)
 	{
-		oneCount += line[bitIndex] == '1' ? 1 : 0;
+		oneCount += (line & testBit ? 1 : 0);
 	}
-	int zeroCount = static_cast<int>(lines.size()) - oneCount;
+	int32_t zeroCount = static_cast<int>(lines.size()) - oneCount;
 
 	return make_pair(zeroCount, oneCount);
 }
 
-static int ParseBinary(const string& number)
+void Puzzle03_A_2021()
 {
-	int value = 0;
-	for (char c : number)
+	const size_t lineWidth = 12;
+
+	int32_t lineCount = 0;
+	array<int32_t, lineWidth> oneCounts{};
+	while (PuzzleInput::NextLine())
 	{
-		value <<= 1;
-		value |= c == '1' ? 1 : 0;
-	}
-	return value;
-}
-
-static void Puzzle03_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> lines = ReadAllLines(input);
-
-	map<int, int> oneCount;
-	for (int i = 0; i < lines[0].length(); i++)
-	{
-		for (const string& line : lines)
+		for (size_t i = 0; i < lineWidth; i++)
 		{
-			oneCount[i] += line[i] == '1' ? 1 : 0;
+			oneCounts[i] += PuzzleInput::GetChar() == '1';
 		}
+
+		lineCount++;
 	}
 
-	int gamma = 0;
-	int epsilon = 0;
-	for (int i = 0; i < lines[0].length(); i++)
+	int32_t gamma = 0;
+	for (size_t i = 0; i < lineWidth; i++)
 	{
 		gamma <<= 1;
-		epsilon <<= 1;
-
-		if (oneCount[i] > lines.size() / 2)
+		if (oneCounts[i] > lineCount / 2)
 		{
 			gamma |= 1;
 		}
-		else
-		{
-			epsilon |= 1;
-		}
 	}
 
-	int64_t answer = gamma * epsilon;
+	int32_t epsilon = (1 << lineWidth) - 1;
+	epsilon ^= gamma;
 
-	printf("[2021] Puzzle03_A: %" PRId64 "\n", answer);
-}
+	int32_t answer = gamma * epsilon;
 
-static void Puzzle03_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> lines = ReadAllLines(input);
-
-	vector<string> oxygen = lines;
-	int bitIndex = 0;
-	while (oxygen.size() > 1)
-	{
-		pair<int, int> counts = CountZerosAndOnes(oxygen, bitIndex);
-
-		char keep = counts.second >= counts.first ? '1' : '0';
-
-		oxygen.erase(remove_if(oxygen.begin(), oxygen.end(),
-			[keep, bitIndex](const string& line)
-			{
-				return line[bitIndex] != keep;
-			}),
-			oxygen.end());
-
-		++bitIndex;
-	}
-
-	vector<string> co2 = lines;
-	bitIndex = 0;
-	while (co2.size() > 1)
-	{
-		pair<int, int> counts = CountZerosAndOnes(co2, bitIndex);
-
-		char keep = counts.first <= counts.second ? '0' : '1';
-
-		co2.erase(remove_if(co2.begin(), co2.end(),
-			[keep, bitIndex](const string& line)
-			{
-				return line[bitIndex] != keep;
-			}),
-			co2.end());
-
-		++bitIndex;
-	}
-
-	int oxygenGenerator = ParseBinary(oxygen[0]);
-	int co2Scrubber = ParseBinary(co2[0]);
-
-	int64_t answer = oxygenGenerator * co2Scrubber;
-
-	printf("[2021] Puzzle03_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle03_A_2021()
-{
-	Puzzle03_A(R"(z:\AoCInput\2021\Puzzle03.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 3, 1, answer);
 }
 
 void Puzzle03_B_2021()
 {
-	Puzzle03_B(R"(z:\AoCInput\2021\Puzzle03.txt)");
+	const size_t lineWidth = 12;
+	const size_t expectedNumLines = 1000;
 
-	int32_t answer = 0;
+	vector<uint32_t> lines;
+	lines.reserve(expectedNumLines);
+
+	while (PuzzleInput::NextLine())
+	{
+		uint32_t line = 0;
+		for (size_t i = 0; i < lineWidth; i++)
+		{
+			line = (line << 1) | (PuzzleInput::GetChar() == '1');
+		}
+		lines.push_back(line);
+	}
+
+	uint32_t oxygenGenerator;
+	{
+		uint32_t testBit = 1 << (lineWidth - 1);
+
+		vector<uint32_t>::iterator oxygenBegin = lines.begin();
+		vector<uint32_t>::iterator oxygenEnd = lines.end();
+		while (distance(oxygenBegin, oxygenEnd) > 1)
+		{
+			pair<int32_t, int32_t> counts = CountZerosAndOnes(ranges::subrange{ oxygenBegin, oxygenEnd }, testBit);
+
+			uint32_t keep = counts.second >= counts.first ? testBit : 0;
+
+			oxygenEnd = partition(oxygenBegin, oxygenEnd,
+				[&](uint32_t l)
+				{
+					return (l & testBit) == keep;
+				});
+
+			testBit >>= 1;
+		}
+
+		oxygenGenerator = *oxygenBegin;
+	}
+
+	uint32_t co2Scrubber;
+	{
+		uint32_t testBit = 1 << (lineWidth - 1);
+
+		vector<uint32_t>::iterator co2Begin = lines.begin();
+		vector<uint32_t>::iterator co2End = lines.end();
+		while (distance(co2Begin, co2End) > 1)
+		{
+			pair<int32_t, int32_t> counts = CountZerosAndOnes(ranges::subrange{ co2Begin, co2End }, testBit);
+
+			uint32_t keep = counts.first <= counts.second ? 0 : testBit;
+
+			co2End = partition(co2Begin, co2End,
+				[&](uint32_t l)
+				{
+					return (l & testBit) == keep;
+				});
+
+			testBit >>= 1;
+		}
+
+		co2Scrubber = *co2Begin;
+	}
+
+	int32_t answer = oxygenGenerator * co2Scrubber;
+
 	PuzzleOutput::Submit(2021, 3, 2, answer);
 }
