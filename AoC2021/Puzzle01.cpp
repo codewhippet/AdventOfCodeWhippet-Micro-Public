@@ -2,30 +2,20 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle01_2021_Types
 {
 }
 
 using namespace Puzzle01_2021_Types;
 
-static void Puzzle01_A(const string& filename)
+void Puzzle01_A_2021()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	int32_t numIncreases = 0;
 
-	int numIncreases = 0;
-
-	int currentDepth;
-	input >> currentDepth;
-
-	while (input.eof() == false)
+	int32_t currentDepth = Parse::GetInt32();
+	while (PuzzleInput::NextLine())
 	{
-		int nextDepth;
-		input >> nextDepth;
+		int32_t nextDepth = Parse::GetInt32();
 		if (nextDepth > currentDepth)
 		{
 			numIncreases++;
@@ -33,49 +23,38 @@ static void Puzzle01_A(const string& filename)
 		currentDepth = nextDepth;
 	}
 
-	int64_t answer = numIncreases;
-
-	printf("[2021] Puzzle01_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle01_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int> depths;
-	ranges::copy(ScanfEachLine<int>(input, "%d") | views::elements<0>, back_inserter(depths));
-
-	int numIncreases = 0;
-
-	for (size_t i = 0; i + 3 < depths.size(); i++)
-	{
-		int currentDepth = depths[i + 0] + depths[i + 1] + depths[i + 2];
-		int nextDepth = depths[i + 1] + depths[i + 2] + depths[i + 3];
-		if (nextDepth > currentDepth)
-		{
-			numIncreases++;
-		}
-	}
-
-	int64_t answer = numIncreases;
-
-	printf("[2021] Puzzle01_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle01_A_2021()
-{
-	Puzzle01_A(R"(z:\AoCInput\2021\Puzzle01.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = numIncreases;
 	PuzzleOutput::Submit(2021, 1, 1, answer);
 }
 
 void Puzzle01_B_2021()
 {
-	Puzzle01_B(R"(z:\AoCInput\2021\Puzzle01.txt)");
+	const int32_t windowSize = 4;
+	const int32_t windowMask = windowSize - 1;
 
-	int32_t answer = 0;
+	int32_t numIncreases = 0;
+
+	array<int32_t, windowSize> window;
+	for (size_t i = 0; i < window.size() - 1; i++)
+	{
+		window[i] = Parse::GetInt32();
+	}
+
+	int32_t current = static_cast<int32_t>(window.size() - 1);
+	while (PuzzleInput::NextLine())
+	{
+		window[current & windowMask] = Parse::GetInt32();
+
+		int32_t currentDepth = window[(current - 3) & windowMask] + window[(current - 2) & windowMask] + window[(current - 1) & windowMask];
+		int32_t nextDepth = window[(current - 2) & windowMask] + window[(current - 1) & windowMask] + window[(current  - 0) & windowMask];
+		if (nextDepth > currentDepth)
+		{
+			numIncreases++;
+		}
+
+		current++;
+	}
+
+	int32_t answer = numIncreases;
 	PuzzleOutput::Submit(2021, 1, 2, answer);
 }
