@@ -112,6 +112,8 @@ static int64_t Manhattan(const Vector3& a, const Vector3& b)
 
 static void Puzzle19_A(const string& filename)
 {
+	CreateRotations();
+
 	(void)filename;
 	ifstream input(filename);
 	//istringstream input(dummy);
@@ -276,6 +278,8 @@ static void Puzzle19_A(const string& filename)
 
 static void Puzzle19_B(const string& filename)
 {
+	CreateRotations();
+
 	(void)filename;
 	ifstream input(filename);
 	//istringstream input(dummy);
@@ -299,10 +303,18 @@ static void Puzzle19_B(const string& filename)
 	printf("[2021] Puzzle19_B: %" PRId64 "\n", answer);
 }
 
-void Puzzle19_2021(const string& filename)
+void Puzzle19_A_2021()
 {
-	CreateRotations();
+	Puzzle19_A(R"(z:\AoCInput\2021\Puzzle19.txt)");
 
-	Puzzle19_A(filename);
-	Puzzle19_B(filename);
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2021, 19, 1, answer);
+}
+
+void Puzzle19_B_2021()
+{
+	Puzzle19_B(R"(z:\AoCInput\2021\Puzzle19.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2021, 19, 2, answer);
 }

@@ -265,9 +265,15 @@ static void Puzzle21_B(const string& filename)
 void Puzzle21_A_2021()
 {
 	Puzzle21_A(R"(z:\AoCInput\2021\Puzzle21.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2021, 21, 1, answer);
 }
 
 void Puzzle21_B_2021()
 {
 	Puzzle21_B(R"(z:\AoCInput\2021\Puzzle21.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2021, 21, 2, answer);
 }

@@ -2420,5 +2420,400 @@
         "IO": 1.219
       }
     }
+  },
+  "2021": {
+    "1": {
+      "1": {
+        "PC": 0.617,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.566,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "2": {
+      "1": {
+        "PC": 0.679,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.682,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "3": {
+      "1": {
+        "PC": 0.556,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.527,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "4": {
+      "1": {
+        "PC": 1.612,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 2.19,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "5": {
+      "1": {
+        "PC": 16.224,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 33.868,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "6": {
+      "1": {
+        "PC": 0.31,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.155,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "7": {
+      "1": {
+        "PC": 0.215,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 7.539,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "8": {
+      "1": {
+        "PC": 0.898,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 2.023,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "9": {
+      "1": {
+        "PC": 7.019,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 11.035,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "10": {
+      "1": {
+        "PC": 0.401,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.404,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "11": {
+      "1": {
+        "PC": 1.089,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 3.577,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "12": {
+      "1": {
+        "PC": 17.91,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 577.442,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "13": {
+      "1": {
+        "PC": 0.707,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 1.317,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "14": {
+      "1": {
+        "PC": 0.775,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 15.613,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "15": {
+      "1": {
+        "PC": 8.689,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 318.329,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "16": {
+      "1": {
+        "PC": 0.161,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.185,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "17": {
+      "1": {
+        "PC": 0.176,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 1.418,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "18": {
+      "1": {
+        "PC": 7.526,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 96.691,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "19": {
+      "1": {
+        "PC": 52.129,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 1.024,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "20": {
+      "1": {
+        "PC": 11.405,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 553.685,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "21": {
+      "1": {
+        "PC": 0.117,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.123,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "22": {
+      "1": {
+        "PC": 147.417,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 11771.267,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "23": {
+      "1": {
+        "PC": 0.138,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 0.172,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "24": {
+      "1": {
+        "PC": 10464.591,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      },
+      "2": {
+        "PC": 1808.285,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    },
+    "25": {
+      "1": {
+        "PC": 72.958,
+        "RP2040": null,
+        "RP2350": null,
+        "RP2350_300MHz": null,
+        "IO": null
+      }
+    }
   }
 }

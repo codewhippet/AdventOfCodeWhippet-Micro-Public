@@ -4,6 +4,7 @@
 #include "AoC2018/AoC2018.h"
 #include "AoC2019/AoC2019.h"
 #include "AoC2020/AoC2020.h"
+#include "AoC2021/AoC2021.h"
 #include <MicroUtils.h>
 #include <string>
 #include <vector>
@@ -45,6 +46,7 @@ static const Puzzles PuzzleTables[] =
 	{ 2018, &PuzzleTableCount_2018, PuzzleTable_2018 },
 	{ 2019, &PuzzleTableCount_2019, PuzzleTable_2019 },
 	{ 2020, &PuzzleTableCount_2020, PuzzleTable_2020 },
+	{ 2021, &PuzzleTableCount_2021, PuzzleTable_2021 },
 };
 
 #if ENABLE_MEMORY_WATERMARK && _WIN32
