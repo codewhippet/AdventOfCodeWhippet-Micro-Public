@@ -35,6 +35,11 @@ namespace Puzzle22_2021_Types
 			memset(Data, 0, DataSize * sizeof(Data[0]));
 		}
 
+		~LightVolume()
+		{
+			delete[] Data;
+		}
+
 		bool& operator()(int64_t x, int64_t y, int64_t z)
 		{
 			int64_t xOffset = x;
