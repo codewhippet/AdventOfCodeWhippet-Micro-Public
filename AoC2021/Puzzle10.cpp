@@ -2,42 +2,8 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle10_2021_Types
 {
-	static map<char, char> OpeningFor =
-	{
-		{')', '('},
-		{']', '['},
-		{'}', '{'},
-		{'>', '<'},
-	};
-
-	static map<char, char> ClosingFor =
-	{
-		{'(', ')'},
-		{'[', ']'},
-		{'{', '}'},
-		{'<', '>'},
-	};
-
-	static map<char, int> PointsForCorruption =
-	{
-		{')', 3},
-		{']', 57},
-		{'}', 1197},
-		{'>', 25137},
-	};
-
-	static map<char, int64_t> PointsForClosing =
-	{
-		{')', 1},
-		{']', 2},
-		{'}', 3},
-		{'>', 4},
-	};
 }
 
 using namespace Puzzle10_2021_Types;
@@ -51,148 +17,151 @@ static bool IsOpen(char c)
 		c == '<';
 }
 
-static bool IsClose(char c)
+static char FirstCorrupt(vector<char>* openSet, const vector<char>& openingFor)
 {
-	return
-		c == ')' ||
-		c == ']' ||
-		c == '}' ||
-		c == '>';
-}
-
-static char FirstCorrupt(const string& line)
-{
-	stack<char> openSet;
-
-	for (char c : line)
+	while (PuzzleInput::PeekChar() != '\n')
 	{
+		char c = static_cast<char>(PuzzleInput::GetChar());
+
 		if (IsOpen(c))
 		{
-			openSet.push(c);
+			openSet->push_back(c);
 			continue;
 		}
 
-		assert(IsClose(c));
-		(void)&IsClose;
-
-		if (openSet.empty())
+		if (openSet->empty())
 		{
 			return c;
 		}
 
-		if (openSet.top() != OpeningFor[c])
+		if (openSet->back() != openingFor[c])
 		{
 			return c;
 		}
 
-		openSet.pop();
+		openSet->pop_back();
 	}
 
 	return '\0';
 }
 
-static string GetClosingChars(const string& line)
+static void GetClosingChars(vector<char>* openSet, const vector<char>& openingFor)
 {
-	stack<char> openSet;
-
-	for (char c : line)
+	while (PuzzleInput::PeekChar() != '\n')
 	{
+		char c = static_cast<char>(PuzzleInput::GetChar());
+
 		if (IsOpen(c))
 		{
-			openSet.push(c);
+			openSet->push_back(c);
 			continue;
 		}
 
-		assert(IsClose(c));
-
-		if (openSet.empty())
+		if (openSet->empty())
 		{
-			return "";
+			return;
 		}
 
-		if (openSet.top() != OpeningFor[c])
+		if (openSet->back() != openingFor[c])
 		{
-			return "";
+			openSet->clear();
+			return;
 		}
 
-		openSet.pop();
+		openSet->pop_back();
 	}
-
-	string closingChars;
-
-	while (openSet.empty() == false)
-	{
-		closingChars += ClosingFor[openSet.top()];
-		openSet.pop();
-	}
-
-	return closingChars;
-}
-
-static int64_t ClosingScore(const string& line)
-{
-	int64_t score = 0;
-	for (char c : line)
-	{
-		score = score * 5 + PointsForClosing[c];
-	}
-	return score;
-}
-
-static void Puzzle10_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	int64_t answer = 0;
-
-	vector<string> lines = ReadAllLines(input);
-
-	answer = MakeEnumerator(lines)
-		->Select<char>([](const string& s) { return FirstCorrupt(s); })
-		->Where([](const char& c) { return c != '\0'; })
-		->Select<int>([](const char& c) { return PointsForCorruption[c]; })
-		->Sum();
-
-	printf("[2021] Puzzle10_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle10_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	int64_t answer = 0;
-
-	vector<string> lines = ReadAllLines(input);
-
-	vector<int64_t> closingLines = MakeEnumerator(lines)
-		->Select<string>([](const string& s) { return GetClosingChars(s); })
-		->Where([](const string& s) { return s.length() > 0; })
-		->Select<int64_t>([](const string& s) { return ClosingScore(s); })
-		->ToVector();
-
-	sort(closingLines.begin(), closingLines.end());
-
-	answer = (int)closingLines[(closingLines.size() / 2)];
-
-	printf("[2021] Puzzle10_B: %" PRId64 "\n", answer);
 }
 
 void Puzzle10_A_2021()
 {
-	Puzzle10_A(R"(z:\AoCInput\2021\Puzzle10.txt)");
+	const size_t charSetSize = 128;
+	const size_t maxOpenSetSize = 32;
+
+	vector<char> openingFor(charSetSize);
+	openingFor[')'] = '(';
+	openingFor[']'] = '[';
+	openingFor['}'] = '{';
+	openingFor['>'] = '<';
+
+	vector<int32_t> pointsForCorruption(charSetSize);
+	pointsForCorruption[')'] = 3;
+	pointsForCorruption[']'] = 57;
+	pointsForCorruption['}'] = 1197;
+	pointsForCorruption['>'] = 25137;
+
+	vector<char> openSet;
+	openSet.reserve(maxOpenSetSize);
 
 	int32_t answer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		openSet.clear();
+		char c = FirstCorrupt(&openSet, openingFor);
+		if (c)
+		{
+			answer += pointsForCorruption[c];
+		}
+		PuzzleInput::DropLine();
+	}
+	
 	PuzzleOutput::Submit(2021, 10, 1, answer);
 }
 
 void Puzzle10_B_2021()
 {
-	Puzzle10_B(R"(z:\AoCInput\2021\Puzzle10.txt)");
+	const size_t charSetSize = 128;
+	const size_t maxOpenSetSize = 32;
+	const size_t maxClosingScores = 64;
 
-	int32_t answer = 0;
+	vector<char> openingFor(charSetSize);
+	openingFor[')'] = '(';
+	openingFor[']'] = '[';
+	openingFor['}'] = '{';
+	openingFor['>'] = '<';
+
+	vector<char> closingFor(charSetSize);
+	closingFor['('] = ')';
+	closingFor['['] = ']';
+	closingFor['{'] = '}';
+	closingFor['<'] = '>';
+
+	vector<int32_t> pointsForClosing(charSetSize);
+	pointsForClosing[')'] = 1;
+	pointsForClosing[']'] = 2;
+	pointsForClosing['}'] = 3;
+	pointsForClosing['>'] = 4;
+
+	vector<char> openSet;
+	openSet.reserve(maxOpenSetSize);
+
+	vector<int64_t> closingScores;
+	closingScores.reserve(maxClosingScores);
+
+	while (PuzzleInput::NextLine())
+	{
+		openSet.clear();
+		GetClosingChars(&openSet, openingFor);
+		if (openSet.size() > 0)
+		{
+			int64_t closingScore = 0;
+			while (openSet.size() > 0)
+			{
+				closingScore = closingScore * 5 + pointsForClosing[closingFor[openSet.back()]];
+				openSet.pop_back();
+			}
+
+			closingScores.push_back(closingScore);
+		}
+
+		PuzzleInput::DropLine();
+	}
+
+	size_t middleElement = (closingScores.size() / 2);
+	nth_element(closingScores.begin(),
+		closingScores.begin() + middleElement,
+		closingScores.end());
+
+	int32_t answer = static_cast<int32_t>(closingScores[middleElement]);
+
 	PuzzleOutput::Submit(2021, 10, 2, answer);
 }
