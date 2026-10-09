@@ -22,7 +22,7 @@ using namespace Puzzle08_2021_Types;
 // 8: ABCDEFG
 // 9: ABCD_FG
 
-// Know: 1, 4, 7, 8
+// Know: '1', '4', '7', '8'
 // 
 // A appears 8
 // B appears 6
@@ -33,213 +33,182 @@ using namespace Puzzle08_2021_Types;
 // G appears 7
 // Therefore know B, E, F
 
-// A = 7 - 1
+// A = '7' - '1'
 // B = Known
-// C = 1 - F
-// D = 4 - B - C - F
+// C = '1' - F
+// D = '4' - B - C - F
 // E = Known
 // F = Known
-// G = 8 - A - B - C - D - E - F
+// G = '8' - A - B - C - D - E - F
 
-static int ToDigits(char c)
+static uint32_t ToDigits(const string_view& str)
 {
-	return 1 << (c - 'a');
-}
-
-static int ToDigits(const string& str)
-{
-	int digits = 0;
+	uint32_t digits = 0;
 	for (char c : str)
 	{
-		digits |= ToDigits(c);
+		digits |= 1u << (c - 'a');
 	}
 	return digits;
 }
 
-static map<int, int> Solve(const vector<string>& digits)
+static void Solve(const vector<char>& digits, vector<int32_t>* mapping)
 {
-	// 1 has 2 segments
-	int D_1 = MakeEnumerator(digits)
-		->Where([](const string& s) { return s.length() == 2; })
-		->Select<int>([](const string& s) { return ToDigits(s); })
-		->First();
+	vector<int32_t> charCounts(26);
 
-	// 4 has 4 segments
-	int D_4 = MakeEnumerator(digits)
-		->Where([](const string& s) { return s.length() == 4; })
-		->Select<int>([](const string& s) { return ToDigits(s); })
-		->First();
-
-	// 7 has 3 segments
-	int D_7 = MakeEnumerator(digits)
-		->Where([](const string& s) { return s.length() == 3; })
-		->Select<int>([](const string& s) { return ToDigits(s); })
-		->First();
-
-	// 8 has 7 segments
-	int D_8 = MakeEnumerator(digits)
-		->Where([](const string& s) { return s.length() == 7; })
-		->Select<int>([](const string& s) { return ToDigits(s); })
-		->First();
-
-	map<char, int> charCounts;
-	for (const string& str : digits)
+	uint32_t D_1 = 0;
+	uint32_t D_4 = 0;
+	uint32_t D_7 = 0;
+	uint32_t D_8 = 0;
 	{
-		for (char c : str)
+		size_t length = 0;
+		for (size_t i = 0; i < digits.size(); i++)
 		{
-			charCounts[c]++;
+			char c = digits[i];
+			if (c == ' ')
+			{
+				switch (length)
+				{
+				case 2: // '1' has 2 segments
+					D_1 = ToDigits(string_view{ &digits[i - length], length });
+					break;
+				case 4: // '4' has 4 segments
+					D_4 = ToDigits(string_view{ &digits[i - length], length });
+					break;
+				case 3: // '7' has 3 segments
+					D_7 = ToDigits(string_view{ &digits[i - length], length });
+					break;
+				case 7: // '8' has 7 segments
+					D_8 = ToDigits(string_view{ &digits[i - length], length });
+					break;
+				}
+
+				length = 0;
+			}
+			else
+			{
+				charCounts[c - 'a']++;
+				length++;
+			}
 		}
 	}
 
-	// B segment appears 5 times
-	int B = ToDigits(find_if(charCounts.begin(), charCounts.end(),
-		[](map<char, int>::const_reference kvp)
+	uint32_t B = 0;
+	uint32_t E = 0;
+	uint32_t F = 0;
+	for (uint32_t i = 0; i < static_cast<uint32_t>(charCounts.size()); i++)
+	{
+		switch (charCounts[i])
 		{
-			return kvp.second == 6;
-		})
-		->first);
+		case 6: // B segment appears 6 times
+			B = 1u << i;
+			break;
+		case 4: // E segment appears 4 times
+			E = 1u << i;
+			break;
+		case 9: // F segment appears 9 times
+			F = 1u << i;
+			break;
+		}
+	}
 
-	// E segment appears 4 times
-	int E = ToDigits(find_if(charCounts.begin(), charCounts.end(),
-		[](map<char, int>::const_reference kvp)
-		{
-			return kvp.second == 4;
-		})
-		->first);
-
-	// F segment appears 9 times
-	int F = ToDigits(find_if(charCounts.begin(), charCounts.end(),
-		[](map<char, int>::const_reference kvp)
-		{
-			return kvp.second == 9;
-		})
-		->first);
-
-	// A = 7 - 1
+	// A = '7' - '1'
 	// B = Known
-	// C = 1 - F
-	// D = 4 - B - C - F
+	// C = '1' - F
+	// D = '4' - B - C - F
 	// E = Known
 	// F = Known
-	// G = 8 - A - B - C - D - E - F
+	// G = '8' - A - B - C - D - E - F
 
-	int A = D_7 & ~D_1;
-	int C = D_1 & ~F;
-	int D = D_4 & ~B & ~C & ~F;
-	int G = D_8 & ~A & ~B & ~C & ~D & ~E & ~F;
+	uint32_t A = D_7 & ~D_1;
+	uint32_t C = D_1 & ~F;
+	uint32_t D = D_4 & ~B & ~C & ~F;
+	uint32_t G = D_8 & ~A & ~B & ~C & ~D & ~E & ~F;
 
-	map<int, int> mapping;
-
-	mapping[(A | B | C | E | F | G)] = 0;
-	mapping[(C | F)] = 1;
-	mapping[(A | C | D | E | G)] = 2;
-	mapping[(A | C | D | F | G)] = 3;
-	mapping[(B | C | D | F)] = 4;
-	mapping[(A | B | D | F | G)] = 5;
-	mapping[(A | B | D | E | F | G)] = 6;
-	mapping[(A | C | F)] = 7;
-	mapping[(A | B | C | D | E | F | G)] = 8;
-	mapping[(A | B | C | D | F | G)] = 9;
-
-	return mapping;
-}
-
-static void Puzzle08_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> lines = ReadAllLines(input);
-
-	regex reg(R"([^\|]+\|([^\|]+))", regex::icase);
-	vector<string> outputValues = MakeEnumerator(lines)
-		->Select<string>([&reg](const string& line)
-			{
-				smatch m;
-				regex_match(line, m, reg);
-				return m[1].str();
-			})
-		->ToVector();
-
-	map<int, int> lengths;
-
-	for (const string& outputValue : outputValues)
-	{
-		istringstream values(outputValue);
-		string value;
-		while (values >> value)
-		{
-			lengths[(int)value.length()]++;
-		}
-	}
-
-	int64_t answer = lengths[2] + lengths[4] + lengths[3] + lengths[7];
-
-	printf("[2021] Puzzle08_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle08_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> lines = ReadAllLines(input);
-
-	regex reg(R"(([^\|]+)\|([^\|]+))", regex::icase);
-	vector<pair<string, string>> outputValues = MakeEnumerator(lines)
-		->Select<pair<string, string>>([&reg](const string& line)
-			{
-				smatch m;
-				regex_match(line, m, reg);
-				return make_pair(m[1].str(), m[2].str());
-			})
-		->ToVector();
-
-	map<int, int> lengths;
-
-	int64_t answer = 0;
-
-	for (const pair<string, string>& outputValue : outputValues)
-	{
-		vector<string> digits;
-		istringstream values(outputValue.first);
-		string value;
-		while (values >> value)
-		{
-			digits.push_back(value);
-		}
-
-		int outputNumber = 0;
-
-		map<int, int> digitMap = Solve(digits);
-		istringstream output(outputValue.second);
-		while (output >> value)
-		{
-			outputNumber *= 10;
-			int digitValue = digitMap[ToDigits(value)];
-			outputNumber += digitValue;
-		}
-
-		answer += outputNumber;
-	}
-
-	printf("[2021] Puzzle08_B: %" PRId64 "\n", answer);
+	(*mapping)[(A | B | C | E | F | G)] = 0;
+	(*mapping)[(C | F)] = 1;
+	(*mapping)[(A | C | D | E | G)] = 2;
+	(*mapping)[(A | C | D | F | G)] = 3;
+	(*mapping)[(B | C | D | F)] = 4;
+	(*mapping)[(A | B | D | F | G)] = 5;
+	(*mapping)[(A | B | D | E | F | G)] = 6;
+	(*mapping)[(A | C | F)] = 7;
+	(*mapping)[(A | B | C | D | E | F | G)] = 8;
+	(*mapping)[(A | B | C | D | F | G)] = 9;
 }
 
 void Puzzle08_A_2021()
 {
-	Puzzle08_A(R"(z:\AoCInput\2021\Puzzle08.txt)");
+	array<int32_t, 8> lengths{};
+	while (PuzzleInput::NextLine())
+	{
+		for (int c = PuzzleInput::GetChar(); c != '|'; c = PuzzleInput::GetChar())
+			;
 
-	int32_t answer = 0;
+		PuzzleInput::DropChar();
+
+		int32_t length = 0;
+		for (char c : Parse::ReadUntilSeen('\n'))
+		{
+			if (c == ' ')
+			{
+				lengths[length]++;
+				length = 0;
+			}
+			else
+			{
+				length++;
+			}
+		}
+
+		lengths[length]++;
+	}
+
+	int32_t answer = lengths[2] + lengths[4] + lengths[3] + lengths[7];;
+
 	PuzzleOutput::Submit(2021, 8, 1, answer);
 }
 
 void Puzzle08_B_2021()
 {
-	Puzzle08_B(R"(z:\AoCInput\2021\Puzzle08.txt)");
+	const size_t signalPatternSize = 59;
+	const size_t mappingSize = 128;
 
 	int32_t answer = 0;
+
+	vector<char> signalPatterns(signalPatternSize);
+	while (PuzzleInput::NextLine())
+	{
+		for (size_t i = 0; i < signalPatternSize; i++)
+		{
+			signalPatterns[i] = static_cast<char>(PuzzleInput::GetChar());
+		}
+		Parse::DiscardExpected("| ");
+
+		vector<int32_t> mapping(mappingSize);
+		Solve(signalPatterns, &mapping);
+
+		int32_t outputNumber = 0;
+		uint32_t digits = 0;
+		while (true)
+		{
+			char c = static_cast<char>(PuzzleInput::GetChar());
+			if ((c == ' ') || (c == '\n'))
+			{
+				outputNumber *= 10;
+				outputNumber += mapping[digits];
+				digits = 0;
+			}
+			else
+			{
+				digits |= 1 << (c - 'a');
+			}
+
+			if (c == '\n')
+				break;
+		}
+
+		answer += outputNumber;
+	}
+	
 	PuzzleOutput::Submit(2021, 8, 2, answer);
 }
