@@ -2,163 +2,95 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle09_2021_Types
 {
-	struct Board
-	{
-		map<Point2, int> Heights;
-		int Width;
-		int Height;
-	};
 }
 
 using namespace Puzzle09_2021_Types;
 
-static Board ReadBoard(istream& input)
+static int32_t BasinSize(uArrayMap2D* board, const Vec2Int& start)
 {
-	vector<string> lines = ReadAllLines(input);
+	const size_t largestSearchQueue = 128;
 
-	Board b;
-	b.Width = (int)lines[0].size();
-	b.Height = (int)lines.size();
+	vector<Vec2Int> searchQueue;
+	searchQueue.reserve(largestSearchQueue);
+	searchQueue.push_back(start);
 
-	for (int row = 0; row < b.Height; row++)
+	(*board)(start) = '9';
+
+	for (size_t i = 0; i < searchQueue.size(); i++)
 	{
-		const string& line = lines[row];
-		for (int column = 0; column < b.Width; column++)
+		Vec2Int current = searchQueue[i];
+		for (const Vec2Int& dir : Vec2Int::CardinalDirections())
 		{
-			b.Heights[Point2{ column, row }] = line[column] - '0';
-		}
-	}
-
-	return b;
-}
-
-static int GetHeight(Point2 p, const Board& b)
-{
-	map<Point2, int>::const_iterator heightIt = b.Heights.find(p);
-	if (heightIt != b.Heights.end())
-	{
-		return heightIt->second;
-	}
-	return INT_MAX;
-}
-
-static vector<Point2> GetNeighbours(Point2 p, const Board& b)
-{
-	vector<Point2> neighbours;
-
-	if (p.X - 1 >= 0) neighbours.push_back(Point2{ p.X - 1, p.Y });
-	if (p.X + 1 < b.Width) neighbours.push_back(Point2{ p.X + 1, p.Y });
-	if (p.Y - 1 >= 0) neighbours.push_back(Point2{ p.X, p.Y - 1 });
-	if (p.Y + 1 < b.Height) neighbours.push_back(Point2{ p.X, p.Y + 1 });
-
-	return neighbours;
-}
-
-static void Puzzle09_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Board b = ReadBoard(input);
-
-	int64_t answer = 0;
-	for (map<Point2, int>::const_reference point : b.Heights)
-	{
-		int thisHeight = point.second;
-		int lowestNeighbour = MakeEnumerator(GetNeighbours(point.first, b))
-			->Select<int>([thisHeight, &b](const Point2& neighbour) { return GetHeight(neighbour, b); })
-			->Min();
-		if (thisHeight < lowestNeighbour)
-		{
-			answer += thisHeight + 1;
-		}
-	}
-
-	printf("[2021] Puzzle09_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle09_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Board b = ReadBoard(input);
-
-	set<Point2> lowPoints;
-	for (map<Point2, int>::const_reference point : b.Heights)
-	{
-		int thisHeight = point.second;
-		int lowestNeighbour = MakeEnumerator(GetNeighbours(point.first, b))
-			->Select<int>([thisHeight, &b](const Point2& neighbour) { return GetHeight(neighbour, b); })
-			->Min();
-		if (thisHeight < lowestNeighbour)
-		{
-			lowPoints.insert(point.first);
-		}
-	}
-
-	vector<int> basinSizes;
-	for (const Point2& point : lowPoints)
-	{
-		set<Point2> basin;
-		set<Point2> visited;
-		vector<Point2> searchQueue;
-
-		searchQueue.push_back(point);
-		for (size_t searchPos = 0; searchPos < searchQueue.size(); searchPos++)
-		{
-			Point2 candidate = searchQueue[searchPos];
-
-			// Skip if we've visited this already
-			if (visited.insert(candidate).second == false)
-				continue;
-
-			// Skip if this isn't part of our basin
-			if (GetHeight(candidate, b) >= 9)
-				continue;
-
-			// This is part of our basin
-			basin.insert(candidate);
-
-			// Surrounding points
-			for (const Point2& neighbour : GetNeighbours(candidate, b))
+			Vec2Int neighbour = current + dir;
+			if ((*board)(neighbour) != '9')
 			{
-				if (visited.find(neighbour) == visited.end())
-				{
-					searchQueue.push_back(neighbour);
-				}
+				searchQueue.push_back(neighbour);
+				(*board)(neighbour) = '9';
 			}
 		}
-
-		basinSizes.push_back((int)basin.size());
 	}
 
-	sort(basinSizes.rbegin(), basinSizes.rend());
-
-	int64_t answer = basinSizes[0] * basinSizes[1] * basinSizes[2];
-
-	printf("[2021] Puzzle09_B: %" PRId64 "\n", answer);
+	assert(searchQueue.capacity() == largestSearchQueue);
+	return static_cast<int32_t>(searchQueue.size());
 }
 
 void Puzzle09_A_2021()
 {
-	Puzzle09_A(R"(z:\AoCInput\2021\Puzzle09.txt)");
+	MemArenaConfig cfg;
+	cfg.LargeBlockRegionSize = 16 * 1024;
+	MemArena_Configure(cfg);
+	{
+		uArrayMap2D board = ReaduArrayMap('9');
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 9, 1, answer);
+		int32_t answer = 0;
+		for (const auto& p : board.Grid())
+		{
+			bool neighboursAllHigher = ranges::all_of(Vec2Int::CardinalDirections(),
+				[&](const Vec2Int& dir)
+				{
+					Vec2Int neighbour = p.first + dir;
+					return board(neighbour) > p.second;
+				});
+			if (neighboursAllHigher)
+			{
+				answer += (p.second - '0') + 1;
+			}
+		}
+
+		PuzzleOutput::Submit(2021, 9, 1, answer);
+	}
+	MemArena_Reset();
 }
 
 void Puzzle09_B_2021()
 {
-	Puzzle09_B(R"(z:\AoCInput\2021\Puzzle09.txt)");
+	const size_t maxNumBasins = 256;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 9, 2, answer);
+	MemArenaConfig cfg;
+	cfg.LargeBlockRegionSize = 16 * 1024;
+	MemArena_Configure(cfg);
+	{
+		uArrayMap2D board = ReaduArrayMap('9');
+
+		vector<int32_t> basinSizes;
+		basinSizes.reserve(maxNumBasins);
+		for (const auto& p : board.Grid())
+		{
+			if (p.second != '9')
+			{
+				int32_t basinSize = BasinSize(&board, p.first);
+				basinSizes.push_back(basinSize);
+			}
+		}
+
+		assert(basinSizes.capacity() == maxNumBasins);
+		nth_element(basinSizes.begin(), basinSizes.begin() + 3, basinSizes.end(), greater{});
+
+		int32_t answer = basinSizes[0] * basinSizes[1] * basinSizes[2];
+
+		PuzzleOutput::Submit(2021, 9, 2, answer);
+	}
+	MemArena_Reset();
 }
