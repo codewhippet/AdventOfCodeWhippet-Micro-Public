@@ -2,191 +2,111 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle11_2021_Types
 {
-	struct Board
-	{
-		map<Point2, int> Octos;
-		int Width;
-		int Height;
-	};
 }
 
 using namespace Puzzle11_2021_Types;
 
-static Board ReadBoard(istream& input)
+static int32_t Update(uArrayMap2D* board, vector<Vec2Int>* flashQueue, vector<int32_t>* queuedBuffer)
 {
-	vector<string> lines = ReadAllLines(input);
+	flashQueue->clear();
+	ranges::fill(*queuedBuffer, 0);
 
-	Board b;
-	b.Width = (int)lines[0].size();
-	b.Height = (int)lines.size();
+	ArrayWrapper2D<int32_t> queued(queuedBuffer->data(), board->GetWidth(), board->GetHeight());
 
-	for (int row = 0; row < b.Height; row++)
+	// Increase flash charge
+	for (const auto& p : board->Grid())
 	{
-		const string& line = lines[row];
-		for (int column = 0; column < b.Width; column++)
+		if (++(*board)(p.first) > '9')
 		{
-			b.Octos[Point2{ column, row }] = line[column] - '0';
+			flashQueue->push_back(p.first);
+			queued(p.first) = 1;
 		}
 	}
 
-	return b;
-}
-
-static vector<Point2> GetNeighbours(Point2 p, const Board& b)
-{
-	vector<Point2> neighbours;
-
-	bool left = (p.X - 1 >= 0);
-	bool right = (p.X + 1 < b.Width);
-	bool up = (p.Y - 1 >= 0);
-	bool down = (p.Y + 1 < b.Height);
-
-	if (left) neighbours.push_back(Point2{ p.X - 1, p.Y });
-	if (right) neighbours.push_back(Point2{ p.X + 1, p.Y });
-	if (up) neighbours.push_back(Point2{ p.X, p.Y - 1 });
-	if (down) neighbours.push_back(Point2{ p.X, p.Y + 1 });
-
-	if (left && up) neighbours.push_back(Point2{ p.X - 1, p.Y - 1 });
-	if (right && up) neighbours.push_back(Point2{ p.X + 1, p.Y - 1 });
-	if (left && down) neighbours.push_back(Point2{ p.X - 1, p.Y + 1 });
-	if (right && down) neighbours.push_back(Point2{ p.X + 1, p.Y + 1 });
-
-	return neighbours;
-}
-
-static vector<Point2> IncreaseEnergy(Board* pBoard)
-{
-	vector<Point2> flashers;
-	for (map<Point2, int>::reference octo : pBoard->Octos)
+	// Flash and keep flashing
+	for (size_t i = 0; i < flashQueue->size(); i++)
 	{
-		if (++octo.second > 9)
+		const Vec2Int current = (*flashQueue)[i];
+		for (const Vec2Int& dir : Vec2Int::CardinalAndDiagonalDirections())
 		{
-			flashers.push_back(octo.first);
-		}
-	}
-	return flashers;
-}
-
-static void Puzzle11_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Board b = ReadBoard(input);
-
-	size_t flashes = 0;
-
-	for (int i = 0; i < 100; i++)
-	{
-		set<Point2> flashed;
-
-		vector<Point2> flashQueue = IncreaseEnergy(&b);
-		for (size_t pos = 0; pos < flashQueue.size(); pos++)
-		{
-			Point2 octo = flashQueue[pos];
-
-			if (flashed.insert(octo).second == false)
-			{
+			const Vec2Int neighbour = current + dir;
+			if (!board->IsInside(neighbour))
 				continue;
-			}
 
-			for (Point2 neighbour : GetNeighbours(octo, b))
+			char incremented = ++(*board)(neighbour);
+			if ((incremented > '9') && (queued(neighbour) == 0))
 			{
-				if (flashed.find(neighbour) != flashed.end())
-				{
-					continue;
-				}
-
-				if (++b.Octos[neighbour] > 9)
-				{
-					flashQueue.push_back(neighbour);
-				}
+				flashQueue->push_back(neighbour);
+				queued(neighbour) = 1;
 			}
 		}
-
-		for (Point2 flasher : flashed)
-		{
-			b.Octos[flasher] = 0;
-		}
-
-		flashes += flashed.size();
 	}
 
-	int64_t answer = flashes;
-
-	printf("[2021] Puzzle11_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle11_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Board b = ReadBoard(input);
-
-	int64_t answer = 0;
-
-	while (true)
+	// Reset octos
+	for (size_t i = 0; i < flashQueue->size(); i++)
 	{
-		set<Point2> flashed;
-
-		vector<Point2> flashQueue = IncreaseEnergy(&b);
-		for (size_t pos = 0; pos < flashQueue.size(); pos++)
-		{
-			Point2 octo = flashQueue[pos];
-
-			if (flashed.insert(octo).second == false)
-			{
-				continue;
-			}
-
-			for (Point2 neighbour : GetNeighbours(octo, b))
-			{
-				if (flashed.find(neighbour) != flashed.end())
-				{
-					continue;
-				}
-
-				if (++b.Octos[neighbour] > 9)
-				{
-					flashQueue.push_back(neighbour);
-				}
-			}
-		}
-
-		for (Point2 flasher : flashed)
-		{
-			b.Octos[flasher] = 0;
-		}
-
-		answer++;
-
-		if (flashed.size() == b.Octos.size())
-			break;
+		(*board)((*flashQueue)[i]) = '0';
 	}
 
-	printf("[2021] Puzzle11_B: %" PRId64 "\n", answer);
+	return static_cast<int32_t>(flashQueue->size());
 }
 
 void Puzzle11_A_2021()
 {
-	Puzzle11_A(R"(z:\AoCInput\2021\Puzzle11.txt)");
+	const int32_t gridSize = 10;
+	const size_t flashQueueSize = gridSize * gridSize;
+	const size_t steps = 100;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 11, 1, answer);
+	MemArenaConfig cfg;
+	cfg.LargeBlockRegionSize = 1 * 1024;
+
+	MemArena_Configure(cfg);
+	{
+		uArrayMap2D board = ReaduArrayMap('0');
+
+		vector<Vec2Int> flashQueue(flashQueueSize);
+		vector<int32_t> queuedBuffer(gridSize * gridSize);
+
+		int32_t answer = 0;
+		for (size_t i = 0; i < steps; i++)
+		{
+			int32_t flashed = Update(&board, &flashQueue, &queuedBuffer);
+			answer += flashed;
+		}
+
+		PuzzleOutput::Submit(2021, 11, 1, answer);
+	}
+	MemArena_Reset();
 }
 
 void Puzzle11_B_2021()
 {
-	Puzzle11_B(R"(z:\AoCInput\2021\Puzzle11.txt)");
+	const int32_t gridSize = 10;
+	const size_t flashQueueSize = gridSize * gridSize;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 11, 2, answer);
+	MemArenaConfig cfg;
+	cfg.LargeBlockRegionSize = 1 * 1024;
+
+	MemArena_Configure(cfg);
+	{
+		uArrayMap2D board = ReaduArrayMap('0');
+
+		vector<Vec2Int> flashQueue(flashQueueSize);
+		vector<int32_t> queuedBuffer(gridSize * gridSize);
+
+		int32_t answer = 0;
+		while (true)
+		{
+			int32_t flashed = Update(&board, &flashQueue, &queuedBuffer);
+			answer++;
+
+			if (flashed == (gridSize * gridSize))
+				break;
+		}
+
+		PuzzleOutput::Submit(2021, 11, 2, answer);
+	}
+	MemArena_Reset();
 }
