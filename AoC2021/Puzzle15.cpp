@@ -2,135 +2,160 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle15_2021_Types
 {
 	struct Cavern
 	{
-		vector<vector<int8_t>> Data;
+		vector<int8_t> Data;
+		int32_t TileWidth = 0;
+		int32_t TileHeight = 0;
+		int32_t CaveWidth = 0;
+		int32_t CaveHeight = 0;
+		array<int8_t, 20> Wrapped = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1 };
 
-		int8_t operator()(const Point2& p) const
+		int8_t operator()(const Vec2Short& p) const
 		{
-			return Data[p.Y][p.X];
+			int32_t subtileX;
+			int32_t tileX = Hardware::DivModRem(p.X, TileWidth, &subtileX);
+
+			int32_t subtileY;
+			int32_t tileY = Hardware::DivModRem(p.Y, TileHeight, &subtileY);
+
+			int8_t base = Data[(subtileY * TileWidth) + subtileX];
+			int8_t adjusted = static_cast<int8_t>(base + tileX + tileY);
+			assert(adjusted < Wrapped.size());
+
+			return Wrapped[adjusted];
 		}
 
-		bool IsIn(const Point2& p) const
+		bool IsIn(const Vec2Short& p) const
 		{
 			return p.X >= 0
-				&& p.X < (int64_t)Data.front().size()
+				&& p.X < CaveWidth
 				&& p.Y >= 0
-				&& p.Y < (int64_t)Data.size();
+				&& p.Y < CaveHeight;
+		}
+	};
+
+	struct VisitedBitfield
+	{
+		int32_t PaddedWidth;
+		int32_t Height;
+		vector<uint32_t> Data;
+
+		VisitedBitfield(int32_t width, int32_t height)
+			: PaddedWidth((width + 31) & ~31)
+			, Height(height)
+			, Data((PaddedWidth * Height) >> 5)
+		{
+		}
+
+		bool SetVisited(const Vec2Short& p)
+		{
+			uint32_t index = (p.Y * PaddedWidth) + p.X;
+			uint32_t wordIndex = index >> 5;
+			uint32_t bitIndex = index & 0x1f;
+			uint32_t bit = 1u << bitIndex;
+
+			uint32_t current = Data[wordIndex];
+			bool wasAlreadyVisited = current & bit;
+
+			Data[wordIndex] |= bit;
+
+			return wasAlreadyVisited;
 		}
 	};
 }
 
 using namespace Puzzle15_2021_Types;
 
-static Cavern ReadRiskLevel(istream& input, size_t repeatCount)
+static Cavern ReadRiskLevel(int32_t repeatCount)
 {
+	const size_t expectedCavernSize = 100;
+
 	Cavern cavern;
-	for (const string& line : ReadEachLine(input))
-	{
-		vector<int8_t> row;
-		ranges::copy(line | views::transform([](char c) -> int8_t { return c - '0'; }), back_inserter(row));
-		cavern.Data.push_back(row);
-	}
+	cavern.Data.reserve(expectedCavernSize * expectedCavernSize);
 
-	auto IncrementWithWrap = [](int8_t v) -> int8_t { return (v % 9) + 1; };
-
-	// Width
-	size_t originalWidth = cavern.Data.front().size();
-	for (vector<int8_t>& row : cavern.Data)
+	int32_t tileWidth = 0;
+	int32_t tileHeight = 0;
+	while (PuzzleInput::NextLine())
 	{
-		for (size_t x = originalWidth; x < (originalWidth * repeatCount); x++)
+		tileWidth = 0;
+		for (char c : Parse::ReadUntilSeen('\n'))
 		{
-			row.push_back(IncrementWithWrap(row[x - originalWidth]));
+			cavern.Data.push_back(c - '0');
+			tileWidth++;
 		}
+		tileHeight++;
 	}
 
-	// Height
-	size_t originalHeight = cavern.Data.size();
-	for (size_t y = originalHeight; y < (originalHeight * repeatCount); y++)
-	{
-		cavern.Data.push_back({});
-		ranges::copy(cavern.Data[y - originalHeight] | views::transform(IncrementWithWrap), back_inserter(cavern.Data.back()));
-	}
+	cavern.TileWidth = tileWidth;
+	cavern.TileHeight = tileHeight;
+	cavern.CaveWidth = cavern.TileWidth * repeatCount;
+	cavern.CaveHeight = cavern.TileHeight * repeatCount;
 
 	return cavern;
 }
 
-static int64_t FindLowestRisk(const Cavern& cavern)
+static int32_t FindLowestRisk(const Cavern& cavern)
 {
-	const Point2 start{};
-	const Point2 finish{ (int64_t)cavern.Data.front().size() - 1, (int64_t)cavern.Data.size() - 1 };
+	const Vec2Short start{};
+	const Vec2Short finish{ static_cast<int16_t>(cavern.CaveWidth - 1), static_cast<int16_t>(cavern.CaveHeight - 1) };
 
-	multimap<int64_t, Point2> searchQueue{ { 0, start } };
-	map<Point2, int64_t> visited;
+	const size_t numSearchBuckets = 10;
+	const size_t bucketSize = 1024;
 
-	while (!searchQueue.empty())
+	array<vector<Vec2Short>, numSearchBuckets> searchQueues;
+	ranges::for_each(searchQueues, [&](auto& queue) { queue.reserve(bucketSize); });
+	searchQueues[0].push_back(start);
+
+	VisitedBitfield visited(cavern.CaveWidth, cavern.CaveHeight);
+
+	for (int32_t currentRisk = 0; currentRisk < numeric_limits<int32_t>::max(); currentRisk++)
 	{
-		auto [currentRisk, currentPos] = *searchQueue.begin();
-		searchQueue.erase(searchQueue.begin());
+		vector<Vec2Short>& currentQueue = searchQueues[currentRisk % searchQueues.size()];
 
-		if (currentPos == finish)
+		for (const Vec2Short& currentPos : currentQueue)
 		{
-			return currentRisk;
-		}
-
-		if (visited.insert({ currentPos, currentRisk }).second == false)
-			continue;
-
-		for (const Point2& dir : Point2::CardinalDirections())
-		{
-			const Point2 neighbour = currentPos + dir;
-			if (cavern.IsIn(neighbour))
+			if (currentPos == finish)
 			{
-				searchQueue.insert({ currentRisk + cavern(neighbour), neighbour });
+				return currentRisk;
+			}
+
+			if (visited.SetVisited(currentPos))
+			{
+				continue;
+			}
+
+			for (const Vec2Short& dir : Vec2Short::CardinalDirections())
+			{
+				const Vec2Short neighbour = currentPos + dir;
+				if (cavern.IsIn(neighbour))
+				{
+					int32_t neighbourRisk = currentRisk + cavern(neighbour);
+					searchQueues[neighbourRisk % searchQueues.size()].push_back(neighbour);
+				}
 			}
 		}
+
+		currentQueue.clear();
 	}
 
 	return -1;
 }
 
-static void Puzzle15_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const Cavern cavern = ReadRiskLevel(input, 1);
-	int64_t answer = FindLowestRisk(cavern);
-
-	printf("[2021] Puzzle15_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle15_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	const Cavern cavern = ReadRiskLevel(input, 5);
-	int64_t answer = FindLowestRisk(cavern);
-
-	printf("[2021] Puzzle15_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle15_A_2021()
 {
-	Puzzle15_A(R"(z:\AoCInput\2021\Puzzle15.txt)");
+	const Cavern cavern = ReadRiskLevel(1);
+	int32_t answer = FindLowestRisk(cavern);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 15, 1, answer);
 }
 
 void Puzzle15_B_2021()
 {
-	Puzzle15_B(R"(z:\AoCInput\2021\Puzzle15.txt)");
+	const Cavern cavern = ReadRiskLevel(5);
+	int32_t answer = FindLowestRisk(cavern);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 15, 2, answer);
 }
