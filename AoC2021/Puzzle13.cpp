@@ -2,144 +2,129 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle13_2021_Types
 {
-	struct Fold
-	{
-		char Axis;
-		int Line;
-	};
 }
 
 using namespace Puzzle13_2021_Types;
 
-static void ReadPuzzle(istream& input, set<Point2>* points, vector<Fold>* folds)
+static void ReadDots(HashSet<Vec2Int>* dots)
 {
-	regex dotReg(R"((\d+),(\d+))");
-	regex foldReg(R"(fold along (\w)=(\d+))");
-
-	vector<string> lines = ReadAllLines(input);
-	for (const string& line : lines)
+	while (PuzzleInput::PeekChar() != '\n')
 	{
-		smatch dotMatch;
-		if (regex_match(line, dotMatch, dotReg))
-		{
-			points->emplace(Point2{ stoll(dotMatch[1].str()), stoll(dotMatch[2].str()) });
-			continue;
-		}
+		dots->Insert({ Parse::GetInt32(), Parse::GetInt32() });
+		PuzzleInput::DropChar();
+	}
 
-		smatch foldMatch;
-		if (regex_match(line, foldMatch, foldReg))
+	PuzzleInput::NextLine();
+}
+
+static void FoldDots(const HashSet<Vec2Int>& src, HashSet<Vec2Int>* dest, char axis, int32_t line)
+{
+	dest->Reset();
+
+	if (axis == 'x')
+	{
+		for (const Vec2Int& original : src)
 		{
-			folds->emplace_back(Fold{ foldMatch[1].str()[0], stoi(foldMatch[2].str()) });
-			continue;
+			Vec2Int folded = original;
+			if (original.X > line)
+			{
+				int32_t distanceFromFold = original.X - line;
+				folded.X = line - distanceFromFold;
+			}
+			dest->Insert(folded);
+		}
+	}
+	else
+	{
+		for (const Vec2Int& original : src)
+		{
+			Vec2Int folded = original;
+			if (original.Y > line)
+			{
+				int32_t distanceFromFold = original.Y - line;
+				folded.Y = line - distanceFromFold;
+			}
+			dest->Insert(folded);
 		}
 	}
 }
 
-static void PrintPuzzle(const set<Point2>& points)
+static string PrintPuzzle(const HashSet<Vec2Int>& dots)
 {
-	int maxX = MakeEnumerator(points)->Select<int>([](const Point2& p) { return (int)p.X; })->Max() + 1;
-	int maxY = MakeEnumerator(points)->Select<int>([](const Point2& p) { return (int)p.Y; })->Max() + 1;
+	const size_t maxPuzzleOutput = 6 * 64;
 
-	for (int y = 0; y < maxY; y++)
+	MaxValue<int32_t> width, height;
+	for (const Vec2Int& dot : dots)
 	{
-		for (int x = 0; x < maxX; x++)
+		width.Update(dot.X);
+		height.Update(dot.Y);
+	}
+
+	string ret;
+	ret.reserve(maxPuzzleOutput);
+
+	for (int32_t y = 0; y <= height; y++)
+	{
+		ret += '\n';
+		for (int32_t x = 0; x <= width; x++)
 		{
-			printf("%c", points.contains(Point2{ x, y }) ? '#' : '.');
+			ret += dots.Contains({ x, y }) ? '#' : ' ';
 		}
-		printf("\n");
-	}
-}
-
-static Point2 FoldPoint(Point2 original, Fold instruction)
-{
-	if (instruction.Axis == 'x')
-	{
-		if (original.X < instruction.Line)
-		{
-			return original;
-		}
-
-		int64_t distanceFromFold = original.X - instruction.Line;
-		return Point2{ instruction.Line - distanceFromFold, original.Y };
 	}
 
-	if (instruction.Axis == 'y')
-	{
-		if (original.Y < instruction.Line)
-		{
-			return original;
-		}
-
-		int64_t distanceFromFold = original.Y - instruction.Line;
-		return Point2{ original.X, instruction.Line - distanceFromFold };
-	}
-
-	return Point2{ -1, -1 };
-}
-
-static void Puzzle13_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	set<Point2> dots;
-	vector<Fold> instructions;
-	ReadPuzzle(input, &dots, &instructions);
-
-	const Fold& f = instructions.front();
-
-	set<Point2> newDots = MakeEnumerator(dots)
-		->Select<Point2>([&f](const Point2& p) { return FoldPoint(p, f); })
-		->ToSet();
-
-	dots = move(newDots);
-
-	int64_t answer = (int64_t)dots.size();
-
-	printf("[2021] Puzzle13_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle13_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	set<Point2> dots;
-	vector<Fold> instructions;
-	ReadPuzzle(input, &dots, &instructions);
-
-	for (const Fold& f : instructions)
-	{
-		set<Point2> newDots = MakeEnumerator(dots)
-			->Select<Point2>([&f](const Point2& p) { return FoldPoint(p, f); })
-			->ToSet();
-
-		dots = move(newDots);
-	}
-
-	printf("[2021] Puzzle13_B:\n");
-	PrintPuzzle(dots);
+	return ret;
 }
 
 void Puzzle13_A_2021()
 {
-	Puzzle13_A(R"(z:\AoCInput\2021\Puzzle13.txt)");
+	const uint32_t dotHashSize = 2 * 1024;
 
-	int32_t answer = 0;
+	array<HashSet<Vec2Int>, 2> dotBuffers
+	{
+		HashSet<Vec2Int>(dotHashSize, Vec2Int::Min()),
+		HashSet<Vec2Int>(dotHashSize, Vec2Int::Min()),
+	};
+
+	ReadDots(&dotBuffers[0]);
+
+	Parse::DiscardExpected("fold along ");
+	int axis = PuzzleInput::GetChar();
+	int32_t line = Parse::GetInt32();
+
+	FoldDots(dotBuffers[0], &dotBuffers[1], static_cast<char>(axis), line);
+
+	int32_t answer = dotBuffers[1].Size();
+
 	PuzzleOutput::Submit(2021, 13, 1, answer);
 }
 
 void Puzzle13_B_2021()
 {
-	Puzzle13_B(R"(z:\AoCInput\2021\Puzzle13.txt)");
+	const uint32_t dotHashSize = 2 * 1024;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 13, 2, answer);
+	array<HashSet<Vec2Int>, 2> dotBuffers
+	{
+		HashSet<Vec2Int>(dotHashSize, Vec2Int::Min()),
+		HashSet<Vec2Int>(dotHashSize, Vec2Int::Min()),
+	};
+
+	ReadDots(&dotBuffers[0]);
+
+	size_t activeBuffer = 0;
+	while (PuzzleInput::NextLine())
+	{
+		Parse::DiscardExpected("fold along ");
+		int axis = PuzzleInput::GetChar();
+		int32_t line = Parse::GetInt32();
+
+		FoldDots(dotBuffers[activeBuffer & 1], &dotBuffers[(activeBuffer + 1) & 1], static_cast<char>(axis), line);
+
+		activeBuffer++;
+	}
+
+	string answer = PrintPuzzle(dotBuffers[activeBuffer & 1]);
+
+	PuzzleOutput::Submit(2021, 13, 2, answer.c_str());
 }
