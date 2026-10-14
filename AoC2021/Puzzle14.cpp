@@ -2,199 +2,119 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle14_2021_Types
 {
-	struct Puzzle
+	struct Mapping
 	{
-		string Polymer;
-		map<string, char> Template;
+		uint32_t From;
+		pair<uint32_t, uint32_t> To;
 	};
-
-	struct CharCounts
-	{
-		CharCounts()
-		{
-			memset(&Count[0], 0, sizeof(Count));
-		}
-
-		int64_t Count[26];
-	};
-
-	void operator+=(CharCounts& lhs, const CharCounts& rhs)
-	{
-		for (int i = 0; i < 26; i++)
-			lhs.Count[i] += rhs.Count[i];
-	}
 }
 
 using namespace Puzzle14_2021_Types;
 
-static Puzzle ReadPuzzle(istream& input)
+static uint32_t PairToIndex(char a, char b)
 {
-	vector<string> lines = ReadAllLines(input);
-
-	Puzzle p;
-	p.Polymer = lines[0];
-
-	for (size_t i = 2; i < lines.size(); i++)
-	{
-		const string& line = lines[i];
-		p.Template[line.substr(0, 2)] = line[6];
-	}
-
-	return p;
+	return ((a - 'A') << 5) | (b - 'A');
 }
 
-static string TransformPolymer(const string& polymer, const map<string, char>& templates)
+static vector<Mapping> CreateTransformMapping()
 {
-	string newPolymer;
-	for (size_t i = 0; i + 1 < polymer.size(); i++)
+	const size_t mappingReserveSize = 100;
+
+	vector<Mapping> mapping;
+	mapping.reserve(mappingReserveSize);
+
+	array<char, 8> line;
+	while (PuzzleInput::NextLine())
 	{
-		const string component = polymer.substr(i, 2);
-		newPolymer += component[0];
+		Parse::ReadNonEmptyLine(line.data(), line.size());
 
-		map<string, char>::const_iterator newComponent = templates.find(component);
-		if (newComponent != templates.end())
-		{
-			newPolymer += newComponent->second;
-		}
+		Mapping m;
+		m.From = PairToIndex(line[0], line[1]);
+		m.To.first = PairToIndex(line[0], line[6]);
+		m.To.second = PairToIndex(line[6], line[1]);
+		mapping.push_back(m);
 	}
-	newPolymer += *polymer.rbegin();
 
-	return newPolymer;
+	return mapping;
 }
 
-static string Transform10(const string& pair, const map<string, char>& templates)
+static int64_t Solve(size_t rounds)
 {
-	string polymer = pair;
-	for (int i = 0; i < 10; i++)
-	{
-		polymer = TransformPolymer(polymer, templates);
-	}
-	return polymer;
-}
+	const size_t alphabetSize = 32;
+	const size_t polymerReserveSize = 32;
 
-static CharCounts CountElements(const string& polymerPair,
-	const map<string, char>& templates,
-	int rounds,
-	map<pair<string, int>, CharCounts>* memoizedCounts)
-{
-	if (rounds < 40)
+	array<char, polymerReserveSize> startingPolymer;
+	int32_t startingPolymerSize = Parse::ReadNonEmptyLine(startingPolymer.data(), startingPolymer.size());
+	PuzzleInput::NextLine();
+
+	vector<Mapping> mappings = CreateTransformMapping();
+
+	array<vector<int64_t>, 2> dp;
+	for (size_t i = 0; i < dp.size(); i++)
 	{
-		map<pair<string, int>, CharCounts>::const_iterator cachedAnswer = memoizedCounts->find(make_pair(polymerPair, rounds));
-		if (cachedAnswer != memoizedCounts->end())
-		{
-			return cachedAnswer->second;
-		}
+		dp[i].resize(alphabetSize * alphabetSize);
+	};
+
+	for (size_t i = 0; (i + 1) < startingPolymerSize; i++)
+	{
+		dp[0][PairToIndex(startingPolymer[i], startingPolymer[i + 1])]++;
 	}
 
-	CharCounts answer;
+	for (size_t expansion = 0; expansion < rounds; expansion++)
+	{
+		const vector<int64_t>& current = dp[expansion & 1];
+		vector<int64_t>& next = dp[(expansion + 1) & 1];
 
-	// Perform 10 rounds
-	string newPolymer = Transform10(polymerPair, templates);
-	if (rounds == 10)
-	{
-		// Don't count the last polymer element
-		for (size_t i = 0; i < newPolymer.size() - 1; i++)
+		ranges::fill(next, 0);
+		for (const Mapping& m : mappings)
 		{
-			answer.Count[newPolymer[i] - 'A']++;
-		}
-	}
-	else
-	{
-		for (size_t i = 0; i + 1 < newPolymer.size(); i++)
-		{
-			answer += CountElements(newPolymer.substr(i, 2), templates, rounds - 10, memoizedCounts);
+			int64_t pairCount = current[m.From];
+			if (pairCount > 0)
+			{
+				next[m.To.first] += pairCount;
+				next[m.To.second] += pairCount;
+			}
 		}
 	}
 
-	(*memoizedCounts)[make_pair(polymerPair, rounds)] = answer;
-	return answer;
-}
-
-static void Puzzle14_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Puzzle p = ReadPuzzle(input);
-
-	string polymer = p.Polymer;
-
-	for (int i = 0; i < 10; i++)
+	vector<int64_t> polymerCounts(alphabetSize);
+	for (size_t i = 0; i < alphabetSize; i++)
 	{
-		polymer = TransformPolymer(polymer, p.Template);
-	}
-
-	map<char, int> charCounts;
-	for (char c : polymer)
-	{
-		charCounts[c]++;
-	}
-
-	int mostCommon = MakeEnumerator<char, int>(charCounts)
-		->Select<int>([](map<char, int>::const_reference kvp) { return kvp.second; })
-		->Max();
-
-	int leastCommon = MakeEnumerator<char, int>(charCounts)
-		->Select<int>([](map<char, int>::const_reference kvp) { return kvp.second; })
-		->Min();
-
-	int64_t answer = mostCommon - leastCommon;
-
-	printf("[2021] Puzzle14_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle14_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Puzzle p = ReadPuzzle(input);
-
-	string polymer = p.Polymer;
-
-	CharCounts counts;
-
-	map<pair<string, int>, CharCounts> memoizedCounts;
-	for (size_t i = 0; i + 1 < polymer.size(); i++)
-	{
-		counts += CountElements(polymer.substr(i, 2), p.Template, 40, &memoizedCounts);
-	}
-
-	counts.Count[*polymer.rbegin() - 'A']++;
-
-	set<int64_t> sortedCounts;
-	for (int i = 0; i < 26; i++)
-	{
-		if (counts.Count[i] != 0)
+		for (size_t j = 0; j < alphabetSize; j++)
 		{
-			sortedCounts.insert(counts.Count[i]);
+			int64_t pairCount = dp[rounds & 1][(i << 5) | j];
+			polymerCounts[i] += pairCount;
+			polymerCounts[j] += pairCount;
 		}
 	}
 
-	int64_t answer = *sortedCounts.crbegin() - *sortedCounts.cbegin();
+	polymerCounts[startingPolymer[0] - 'A']++;
+	polymerCounts[startingPolymer[startingPolymerSize - 1] - 'A']++;
 
-	printf("[2021] Puzzle14_B: %" PRId64 "\n", answer);
+	MinMaxValues<int64_t> polymers;
+	for (size_t i = 0; i < polymerCounts.size(); i++)
+	{
+		if (polymerCounts[i] > 0)
+		{
+			polymers.Update(polymerCounts[i] >> 1);
+		}
+	}
+
+	return polymers.GetMax() - polymers.GetMin();
 }
 
 void Puzzle14_A_2021()
 {
-	Puzzle14_A(R"(z:\AoCInput\2021\Puzzle14.txt)");
+	int64_t answer = Solve(10);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 14, 1, answer);
 }
 
 void Puzzle14_B_2021()
 {
-	Puzzle14_B(R"(z:\AoCInput\2021\Puzzle14.txt)");
+	int64_t answer = Solve(40);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 14, 2, answer);
 }
