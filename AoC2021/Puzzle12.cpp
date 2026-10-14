@@ -2,178 +2,253 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle12_2021_Types
 {
-	enum class CaveType
+	enum class Joker : int32_t
 	{
-		Start,
-		End,
-		Small,
-		Big
+		NotUsed,
+		Used
 	};
 
-	struct Cave
+	struct CaveSystem
 	{
-		string Id;
-		CaveType Type;
-		vector<string> Neighbours;
+		int32_t Start;
+		int32_t End;
+		vector<uint32_t> Restrictions;
+		vector<SmallVector<int32_t, 8>> Neighbours;
+	};
+
+	struct ExplorationState
+	{
+		int32_t CurrentCave;
+		uint32_t VisitedCaves;
+		Joker UsedJoker;
+
+		int32_t ExplorationValue;
+		int32_t NextNeighbour;
+		int32_t* Output;
+	};
+
+	struct CacheKey
+	{
+		int32_t CurrentCave;
+		uint32_t VisitedCaves;
+		Joker UsedJoker;
+
+		bool operator==(const CacheKey& other) const
+		{
+			return CurrentCave == other.CurrentCave &&
+				VisitedCaves == other.VisitedCaves &&
+				UsedJoker == other.UsedJoker;
+		}
 	};
 }
 
 using namespace Puzzle12_2021_Types;
 
-static CaveType Categorise(const string& s)
+template <>
+struct std::hash<CacheKey>
 {
-	if (s == "start") return CaveType::Start;
-	if (s == "end") return CaveType::End;
-	if (ranges::all_of(s, [](char c) { return islower(c); })) return CaveType::Small;
-	return CaveType::Big;
-}
-
-static unordered_map<string, Cave> ReadCaveSystem(istream& input)
-{
-	vector<string> lines = ReadAllLines(input);
-
-	regex lineReg(R"((\w+)-(\w+))");
-
-	unordered_map<string, Cave> caveSystem;
-	for (const string& line : lines)
+	size_t operator()(const CacheKey& key) const noexcept
 	{
-		smatch match;
-		regex_match(line, match, lineReg);
+		uint32_t hash = 0x811c9dc5;
 
-		Cave caveA{ match[1].str(), Categorise(match[1].str()), {} };
-		Cave caveB{ match[2].str(), Categorise(match[2].str()), {} };
+		hash ^= key.CurrentCave;
+		hash *= 0x01000193;
+		hash ^= key.VisitedCaves;
+		hash *= 0x01000193;
+		hash ^= static_cast<uint32_t>(key.UsedJoker);
+		hash *= 0x01000193;
 
-		caveSystem.insert(make_pair(caveA.Id, caveA));
-		caveSystem.insert(make_pair(caveB.Id, caveB));
-
-		caveSystem[caveA.Id].Neighbours.push_back(caveB.Id);
-		caveSystem[caveB.Id].Neighbours.push_back(caveA.Id);
+		return hash;
 	}
+};
 
-	return caveSystem;
-}
-
-static int Explore(const unordered_map<string, Cave>& caveSystem, const string& currentId, set<string> visitedSmallCaves)
+static CaveSystem ReadCaveSystem()
 {
-	const Cave& currentCave = caveSystem.at(currentId);
-	if (currentCave.Type == CaveType::End)
-	{
-		return 1;
-	}
+	const size_t maxNumberCaves = 32;
 
-	if ((currentCave.Type == CaveType::Small) || (currentCave.Type == CaveType::Start))
+	CaveSystem caves;
+	caves.Restrictions.reserve(maxNumberCaves);
+	caves.Neighbours.reserve(maxNumberCaves);
+
+	NameDictionary names(64);
+	array<char, 16> line;
+	while (PuzzleInput::NextLine())
 	{
-		if (visitedSmallCaves.insert(currentCave.Id).second == false)
+		Parse::ReadNonEmptyLine(line.data(), line.size());
+		char* separator = to_address(ranges::find(line, '-'));
+
+		*separator = '\0';
+		int32_t from = names.IdFromName(line.data());
+		int32_t to = names.IdFromName(separator + 1);
+
+		const size_t minArraySize = max<size_t>(max(from, to) + 1, caves.Restrictions.size());
+		caves.Restrictions.resize(minArraySize);
+		caves.Neighbours.resize(minArraySize);
+
+		if (islower(*line.data()))
 		{
-			return 0;
+			caves.Restrictions[from] = 1u << from;
+		}
+
+		if (islower(*(separator + 1)))
+		{
+			caves.Restrictions[to] = 1u << to;
+		}
+
+		caves.Neighbours[from].PushBack(to);
+		caves.Neighbours[to].PushBack(from);
+	}
+
+	caves.Start = names.IdFromName("start");
+	caves.End = names.IdFromName("end");
+
+	return caves;
+}
+
+static bool CheckIfCanVisit(const CaveSystem& caveSystem, int32_t caveToVisit, uint32_t visitedCaves, Joker* usedJoker)
+{
+	bool canVisit = true;
+	if (caveSystem.Restrictions[caveToVisit] & visitedCaves)
+	{
+		// We can revisit a cave if we still have a joker
+		if (*usedJoker == Joker::NotUsed)
+		{
+			*usedJoker = Joker::Used;
+		}
+		else
+		{
+			canVisit = false;
 		}
 	}
 
-	int explorationValue = 0;
-	for (const string& neighbour : currentCave.Neighbours)
-	{
-		explorationValue += Explore(caveSystem, neighbour, visitedSmallCaves);
-	}
-	return explorationValue;
+	return canVisit;
 }
 
-static int Explore2(const unordered_map<string, Cave>& caveSystem, const string& currentId, map<string, int> visitedSmallCaves, bool usedJoker)
+static int32_t Explore(const CaveSystem& caveSystem, const Joker usedJoker)
 {
-	const Cave& currentCave = caveSystem.at(currentId);
-	if (currentCave.Type == CaveType::End)
+	const uint32_t solutionCacheSize = 2 * 1024;
+
+	vector<ExplorationState> exec;
+	exec.reserve(caveSystem.Restrictions.size() * 2);
+
+	int32_t explorationValue = 0;
 	{
-		// We have found a valid path
-		return 1;
+		ExplorationState startingState;
+		startingState.CurrentCave = caveSystem.Start;
+		startingState.VisitedCaves = 0;
+		startingState.UsedJoker = usedJoker;
+		startingState.ExplorationValue = 0;
+		startingState.NextNeighbour = 0;
+		startingState.Output = &explorationValue;
+		exec.push_back(startingState);
 	}
 
-	if (currentCave.Type == CaveType::Start)
+	HashMap<CacheKey, int32_t> solutionCache(solutionCacheSize, { -1 });
+	while (exec.empty() == false)
 	{
-		// We can only visit the starting cave once
-		if (visitedSmallCaves.insert(make_pair(currentCave.Id, 1)).second == false)
+		ExplorationState& current = exec.back();
+
+		CacheKey key;
+		key.CurrentCave = current.CurrentCave;
+		key.VisitedCaves = current.VisitedCaves;
+		key.UsedJoker = current.UsedJoker;
+
+		int32_t existingSolution = 0;
+		if (solutionCache.TryFind(key, &existingSolution))
 		{
-			return 0;
+			*current.Output += existingSolution;
+			exec.pop_back();
+			continue;
 		}
-	}
 
-	if (currentCave.Type == CaveType::Small)
-	{
-		int visitCount = ++visitedSmallCaves[currentCave.Id];
-
-		// We can visit one small cave twice
-		if (visitCount > 1)
+		if (current.NextNeighbour == 0)
 		{
-			if (usedJoker)
+			if (current.CurrentCave == caveSystem.End)
 			{
-				return 0;
+				// We have found a valid path
+				*current.Output += 1;
+				exec.pop_back();
+				continue;
+			}
+
+			if (current.CurrentCave == caveSystem.Start)
+			{
+				// We can only visit the starting cave once
+				if (current.VisitedCaves & (1u << current.CurrentCave))
+				{
+					exec.pop_back();
+					continue;
+				}
+			}
+
+			const int32_t neighbour = caveSystem.Neighbours[current.CurrentCave][current.NextNeighbour];
+			const uint32_t newVisitedCaves = current.VisitedCaves | caveSystem.Restrictions[current.CurrentCave];
+			Joker willHaveUsedJoker = current.UsedJoker;
+
+			if (CheckIfCanVisit(caveSystem, neighbour, newVisitedCaves, &willHaveUsedJoker))
+			{
+				ExplorationState neighbourState;
+				neighbourState.CurrentCave = neighbour;
+				neighbourState.VisitedCaves = newVisitedCaves;
+				neighbourState.UsedJoker = willHaveUsedJoker;
+				neighbourState.ExplorationValue = 0;
+				neighbourState.NextNeighbour = 0;
+				neighbourState.Output = &current.ExplorationValue;
+				exec.push_back(neighbourState);
+			}
+
+			current.NextNeighbour++;
+		}
+		else
+		{
+			if (current.NextNeighbour == caveSystem.Neighbours[current.CurrentCave].size())
+			{
+				solutionCache.Insert(key, current.ExplorationValue);
+
+				*current.Output += current.ExplorationValue;
+				exec.pop_back();
+				continue;
 			}
 			else
 			{
-				usedJoker = true;
+				const int32_t neighbour = caveSystem.Neighbours[current.CurrentCave][current.NextNeighbour];
+				const uint32_t newVisitedCaves = current.VisitedCaves | caveSystem.Restrictions[current.CurrentCave];
+				Joker willHaveUsedJoker = current.UsedJoker;
+
+				if (CheckIfCanVisit(caveSystem, neighbour, newVisitedCaves, &willHaveUsedJoker))
+				{
+					ExplorationState neighbourState;
+					neighbourState.CurrentCave = neighbour;
+					neighbourState.VisitedCaves = newVisitedCaves;
+					neighbourState.UsedJoker = willHaveUsedJoker;
+					neighbourState.ExplorationValue = 0;
+					neighbourState.NextNeighbour = 0;
+					neighbourState.Output = &current.ExplorationValue;
+					exec.push_back(neighbourState);
+				}
+
+				current.NextNeighbour++;
 			}
 		}
-
-		// But no small cave more than twice
-		if (visitCount > 2)
-		{
-			return 0;
-		}
 	}
 
-	int explorationValue = 0;
-	for (const string& neighbour : currentCave.Neighbours)
-	{
-		explorationValue += Explore2(caveSystem, neighbour, visitedSmallCaves, usedJoker);
-	}
 	return explorationValue;
-}
-
-static void Puzzle12_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	int64_t answer = 0;
-
-	unordered_map<string, Cave> caveSystem = ReadCaveSystem(input);
-
-	answer = Explore(caveSystem, "start", {});
-
-	printf("[2021] Puzzle12_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle12_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	int64_t answer = 0;
-
-	unordered_map<string, Cave> caveSystem = ReadCaveSystem(input);
-
-	answer = Explore2(caveSystem, "start", {}, false);
-
-	printf("[2021] Puzzle12_B: %" PRId64 "\n", answer);
 }
 
 void Puzzle12_A_2021()
 {
-	Puzzle12_A(R"(z:\AoCInput\2021\Puzzle12.txt)");
+	CaveSystem caves = ReadCaveSystem();
+	int32_t answer = Explore(caves, Joker::Used);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 12, 1, answer);
 }
 
 void Puzzle12_B_2021()
 {
-	Puzzle12_B(R"(z:\AoCInput\2021\Puzzle12.txt)");
+	CaveSystem caves = ReadCaveSystem();
+	int32_t answer = Explore(caves, Joker::NotUsed);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2021, 12, 2, answer);
 }
