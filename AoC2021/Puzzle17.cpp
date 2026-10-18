@@ -2,23 +2,18 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle17_2021_Types
 {
 }
 
 using namespace Puzzle17_2021_Types;
 
-static pair<Point2, Point2> ReadTargetArea(const string& description)
+static pair<Vec2Int, Vec2Int> ReadTargetArea()
 {
-	int x1, x2, y1, y2;
-	int parsed = sscanf(description.c_str(),
-		"target area: x=%d..%d, y=%d..%d",
-		&x1, &x2, &y1, &y2);
-	assert(parsed == 4);
-	(void)parsed;
+	int32_t x1 = Parse::GetInt32();
+	int32_t x2 = Parse::GetInt32();
+	int32_t y1 = Parse::GetInt32();
+	int32_t y2 = Parse::GetInt32();
 
 	return
 	{
@@ -27,12 +22,12 @@ static pair<Point2, Point2> ReadTargetArea(const string& description)
 	};
 }
 
-static int TriangleNumber(int n)
+static int32_t TriangleNumber(int32_t n)
 {
 	return (n * (n + 1)) / 2;
 }
 
-static bool HasHitTarget(const Point2& probe, const pair<Point2, Point2>& target)
+static bool HasHitTarget(const Vec2Int& probe, const pair<Vec2Int, Vec2Int>& target)
 {
 	return
 		(probe.X <= target.first.X) &&
@@ -41,9 +36,9 @@ static bool HasHitTarget(const Point2& probe, const pair<Point2, Point2>& target
 		(probe.Y >= target.second.Y);
 }
 
-static bool DoesHitTarget(Point2 velocity, const pair<Point2, Point2>& target)
+static bool DoesHitTarget(Vec2Int velocity, const pair<Vec2Int, Vec2Int>& target)
 {
-	Point2 probe{ 0, 0 };
+	Vec2Int probe{ 0, 0 };
 
 	while (true)
 	{
@@ -51,6 +46,9 @@ static bool DoesHitTarget(Point2 velocity, const pair<Point2, Point2>& target)
 			return true;
 
 		if (probe.Y < target.second.Y)
+			return false;
+
+		if (probe.X > target.first.X)
 			return false;
 
 		// Move
@@ -69,66 +67,37 @@ static bool DoesHitTarget(Point2 velocity, const pair<Point2, Point2>& target)
 	return false;
 }
 
-static void Puzzle17_A(const string& filename)
+void Puzzle17_A_2021()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	pair<Vec2Int, Vec2Int> target = ReadTargetArea();
 
-	string targetDescription;
-	getline(input, targetDescription);
-	pair<Point2, Point2> target = ReadTargetArea(targetDescription);
+	int32_t answer = TriangleNumber(abs(target.second.Y) - 1);
 
-	int64_t answer = TriangleNumber((int)abs(target.second.Y) - 1);
-
-	printf("[2021] Puzzle17_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2021, 17, 1, answer);
 }
 
-static void Puzzle17_B(const string& filename)
+void Puzzle17_B_2021()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	string targetDescription;
-	getline(input, targetDescription);
-	pair<Point2, Point2> target = ReadTargetArea(targetDescription);
+	pair<Vec2Int, Vec2Int> target = ReadTargetArea();
 
 	// Assume the target is down and to the right
+	int32_t maximumY = abs(target.second.Y) - 1;
+	int32_t minimumY = target.second.Y;
 
-	int maximumY = (int)abs(target.second.Y) - 1;
-	int minimumY = (int)target.second.Y;
+	int32_t maximumX = target.first.X;
+	// Minimum X is the nth triangular number that doesn't exceed the left edge
+	int32_t minimumX = static_cast<int32_t>((sqrtf(8.0f * target.second.X + 1.0f) - 1) * 0.5f);
 
-	int maximumX = (int)target.first.X;
-	int minimumX = 1;
-
-	int hits = 0;
-	for (int y = minimumY; y <= maximumY; y++)
+	int32_t hits = 0;
+	for (int32_t y = minimumY; y <= maximumY; y++)
 	{
-		for (int x = minimumX; x <= maximumX; x++)
+		for (int32_t x = minimumX; x <= maximumX; x++)
 		{
 			if (DoesHitTarget({ x, y }, target))
 				hits++;
 		}
 	}
 
-	int64_t answer = hits;
-
-	printf("[2021] Puzzle17_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle17_A_2021()
-{
-	Puzzle17_A(R"(z:\AoCInput\2021\Puzzle17.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 17, 1, answer);
-}
-
-void Puzzle17_B_2021()
-{
-	Puzzle17_B(R"(z:\AoCInput\2021\Puzzle17.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = hits;
 	PuzzleOutput::Submit(2021, 17, 2, answer);
 }
