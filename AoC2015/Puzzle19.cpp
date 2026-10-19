@@ -9,24 +9,6 @@ namespace Puzzle19_2015_Types
 		vector<pair<string, string>> Substitutions;
 		string StartingChemical;
 	};
-
-	struct AtomicStructure
-	{
-		set<string> Atoms;
-		multimap<string, vector<string>> Substitutions;
-		map<string, set<string>> FrontSets;
-		map<string, set<string>> BackSets;
-		vector<string> TargetMolecule;
-	};
-
-	struct CacheKey
-	{
-		size_t Begin;
-		size_t End;
-		string Element;
-
-		auto operator<=>(const CacheKey&) const = default;
-	};
 }
 
 using namespace Puzzle19_2015_Types;
@@ -94,6 +76,7 @@ static int32_t FullyReduce(const vector<pair<string_view, string_view>>& reactio
 	int32_t steps = 0;
 	while (strlen(chemicalBuffers[sourceBuffer]) > 1)
 	{
+		bool subFound = false;
 		for (const auto& sub : reactions)
 		{
 			size_t destBuffer = 1 - sourceBuffer;
@@ -110,8 +93,16 @@ static int32_t FullyReduce(const vector<pair<string_view, string_view>>& reactio
 				strcat(chemicalBuffers[destBuffer], chemicalBuffers[sourceBuffer] + foundAt + sub.second.size());
 
 				sourceBuffer = 1 - sourceBuffer;
+
+				subFound = true;
 				break;
 			}
+		}
+
+		if (subFound == false)
+		{
+			steps = -1;
+			break;
 		}
 	}
 
@@ -119,6 +110,27 @@ static int32_t FullyReduce(const vector<pair<string_view, string_view>>& reactio
 	MemArena_Free(chemicalBuffers[1]);
 
 	return steps;
+}
+
+static int32_t FullyReduceRandomised(vector<pair<string_view, string_view>> reactions, const string_view& chemical)
+{
+	while (true)
+	{
+		int32_t steps = FullyReduce(reactions, chemical);
+		if (steps != -1)
+		{
+			return steps;
+		}
+
+		for (size_t i = 0; i < reactions.size(); i++)
+		{
+			size_t j = rand() % reactions.size();
+			if (i != j)
+			{
+				swap(reactions[i], reactions[j]);
+			}
+		}
+	}
 }
 
 void Puzzle19_A_2015()
@@ -181,7 +193,7 @@ void Puzzle19_B_2015()
 		assert(chemicalSize > 0);
 		(void)chemicalSize;
 
-		int32_t answer = FullyReduce(reactions, string_view(chemical));
+		int32_t answer = FullyReduceRandomised(reactions, string_view(chemical));
 
 		MemArena_Free(chemical);
 
