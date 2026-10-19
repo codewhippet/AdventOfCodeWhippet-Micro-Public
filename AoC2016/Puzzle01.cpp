@@ -46,7 +46,8 @@ void Puzzle01_B_2016()
 	Vec2Int location{ 0, 0 };
 	Vec2Int direction = Vec2Int::North();
 
-	set<Vec2Int> visited;
+	HashSet<Vec2Int> visited(2 * 1024, Vec2Int::Max());
+	visited.Insert(location);
 
 	for (int directionCode = PuzzleInput::GetChar(); directionCode != EOF; directionCode = PuzzleInput::GetChar())
 	{
@@ -64,9 +65,18 @@ void Puzzle01_B_2016()
 			assert(false);
 		}
 
-		location = location + direction * length;
+		bool foundHq = false;
+		for (int32_t i = 0; i < length; i++)
+		{
+			location = location + direction;
+			if (visited.Insert(location) == false)
+			{
+				foundHq = true;
+				break;
+			}
+		}
 
-		if (visited.insert(location).second == false)
+		if (foundHq)
 			break;
 
 		PuzzleInput::DropChar();
