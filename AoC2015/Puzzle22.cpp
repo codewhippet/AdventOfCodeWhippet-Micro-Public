@@ -102,11 +102,14 @@ static int32_t MinimumManaForWin(const array<Fighter, 2>& startingFighters, Diff
 		{
 		case RoundStage::Begin:
 			{
+				// Damage we need to deal to the boss
+				const int32_t bossDamageNeeded = currentState.Fighters[1].HitPoints - (currentState.Fighters[0].EffectTimers[EffectType::Poison] * 3);
+
 				// The cheapest damage we can buy is poison at 173 mana for 18HP
 				const int32_t minimumManaPerHP = 9;
 
 				// Early out if we can't improve on the global minimum
-				int32_t minimumManaForRemainingHP = max<int32_t>(currentState.Fighters[1].HitPoints * minimumManaPerHP, 0);
+				int32_t minimumManaForRemainingHP = max<int32_t>(bossDamageNeeded * minimumManaPerHP, 0);
 				currentState.Stage = ((currentState.ManaSpend + minimumManaForRemainingHP) > globalMinimumMana ? RoundStage::End : RoundStage::CheckForWin);
 			}
 			break;
@@ -190,7 +193,8 @@ static int32_t MinimumManaForWin(const array<Fighter, 2>& startingFighters, Diff
 				}
 				else if (currentState.ActivePlayer == 0)
 				{
-					currentState.Stage = RoundStage::CastMissle;
+					// We must be able to cast at least one spell
+					currentState.Stage = currentState.Fighters[0].Mana < 53 ? RoundStage::End : RoundStage::CastMissle;
 				}
 				else
 				{
