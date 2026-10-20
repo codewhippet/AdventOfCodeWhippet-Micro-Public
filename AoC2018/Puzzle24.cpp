@@ -232,6 +232,10 @@ static SimulationResult SimulateFight(Simulation* sim)
 				choice.DamageFactor = MaximumDamageDealt(attackingGroup, potentialTarget.first);
 				choice.EffectivePowerFactor = potentialTarget.first->EffectivePower();
 				choice.InitiativeFactor = potentialTarget.first->Initiative;
+
+				if (choice.DamageFactor == 0)
+					continue;
+
 				if ((!get<1>(bestTarget)) || (choice > get<0>(bestTarget)))
 				{
 					bestTarget = { choice, potentialTarget.first, i };
