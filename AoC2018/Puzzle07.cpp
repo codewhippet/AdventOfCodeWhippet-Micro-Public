@@ -11,7 +11,7 @@ namespace Puzzle07_2018_Types
 	{
 		char Id = '\0';
 		int32_t BlockedByCount = 0;
-		SmallVector<size_t, 8> Unblocks;
+		SmallVector<size_t, 10> Unblocks;
 		int32_t WorkRequired = 0;
 		int32_t WorkPerformed = 0;
 	};
