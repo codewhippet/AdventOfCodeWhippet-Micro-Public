@@ -50,12 +50,17 @@ void Puzzle12_A_2017()
 
 	while (PuzzleInput::NextLine())
 	{
+		int16_t connectedFrom = Parse::GetInt16();
+		assert(connectedFrom == pipes.size());
+		(void)connectedFrom;
+
 		pipes.push_back({});
 		Pipe& pipe = pipes.back();
 
 		int16_t connectedTo;
 		while (Parse::TryGetInt16FromLine(&connectedTo))
 		{
+			assert(pipe.NumConnections < pipe.ConnectedTo.size());
 			pipe.ConnectedTo[pipe.NumConnections++] = connectedTo;
 		}
 	}
@@ -71,12 +76,17 @@ void Puzzle12_B_2017()
 
 	while (PuzzleInput::NextLine())
 	{
+		int16_t connectedFrom = Parse::GetInt16();
+		assert(connectedFrom == pipes.size());
+		(void)connectedFrom;
+
 		pipes.push_back({});
 		Pipe& pipe = pipes.back();
 
 		int16_t connectedTo;
 		while (Parse::TryGetInt16FromLine(&connectedTo))
 		{
+			assert(pipe.NumConnections < pipe.ConnectedTo.size());
 			pipe.ConnectedTo[pipe.NumConnections++] = connectedTo;
 		}
 	}
