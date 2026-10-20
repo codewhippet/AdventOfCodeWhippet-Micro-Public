@@ -95,5 +95,5 @@ void Puzzle18_B_2016()
 		NextRow(buffers[i & 1], mask, &buffers[(i + 1) & 1]);
 	}
 
-	return PuzzleOutput::Submit(2016, 18, 1, answer);
+	return PuzzleOutput::Submit(2016, 18, 2, answer);
 }
