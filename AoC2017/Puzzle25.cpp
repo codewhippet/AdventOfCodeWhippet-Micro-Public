@@ -84,8 +84,8 @@ void Puzzle25_A_2017()
 	Puzzle p;
 	ParsePuzzle(&p);
 
-	vector<int32_t> tape(5 * 1024);
-	size_t head = 4 * 1024;
+	vector<int32_t> tape(16 * 1024);
+	size_t head = 8 * 1024;
 
 	size_t currentState = p.StartingState;
 	for (uint32_t i = 0; i < p.StepsToExecute; i++)
@@ -94,6 +94,7 @@ void Puzzle25_A_2017()
 		const Instruction& inst = p.StateMachine[currentState].Instructions[currentValue];
 		tape[head] = inst.Write;
 		head += inst.Move;
+		assert(head < tape.size());
 		currentState = inst.NextState;
 	}
 
