@@ -109,6 +109,8 @@ static uint32_t FindMaximumScore(int32_t numPlayers, uint32_t lastMarble, Packed
 		}
 	}
 
+	assert(marble == lastMarble); // Some inputs are too large for PSRAM
+
 	uint32_t answer = ranges::max(playerScores);
 
 	return answer;
@@ -134,7 +136,7 @@ void Puzzle09_B_2018()
 		uint32_t lastMarble = Parse::GetUint32();
 
 		uint32_t answer = FindMaximumScore(numPlayers,
-			lastMarble * 1000,
+			lastMarble * 100,
 			static_cast<PackedMarble*>(Hardware::PsramBase()),
 			static_cast<uint32_t>(Hardware::PsramSize() / sizeof(PackedMarble)));
 
