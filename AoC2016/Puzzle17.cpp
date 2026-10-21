@@ -134,7 +134,7 @@ void Puzzle17_B_2016()
 	MemArenaConfig cfg;
 	cfg.SmallBlockCounts = sbas;
 	cfg.NumSmallBlockCounts = sizeof(sbas) / sizeof(sbas[0]);
-	cfg.LargeBlockRegionSize = 96 * 1024;
+	cfg.LargeBlockRegionSize = 160 * 1024;
 
 	MemArena_Configure(cfg);
 	{
