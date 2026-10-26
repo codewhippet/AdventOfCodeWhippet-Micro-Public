@@ -11,9 +11,7 @@ using namespace Puzzle17_2019_Types;
 
 static uArrayMap2D ExtractMap(const vector<int32_t>& program)
 {
-	uArrayMap2D pipes(CreateArrayMap2DAllocator_Heap(), {}, 64, 32, '.');
-
-	assert(program.size() == 3050);
+	uArrayMap2D pipes(CreateArrayMap2DAllocator_Heap(), {}, 64, 64, '.');
 
 	uIntputer<int32_t> puter;
 	puter.CopyProgram(program);
@@ -202,12 +200,15 @@ static bool Solve(const vector<string>& particles, int depth, vector<string> *an
 
 void Puzzle17_A_2019()
 {
+	const size_t requiredProgramSize = 6 * 1024;
+
 	vector<int32_t> program;
+	program.reserve(requiredProgramSize);
 	while (PuzzleInput::PeekChar() != '\n')
 	{
 		program.push_back(Parse::GetInt32());
 	}
-	program.resize(3050);
+	program.resize(requiredProgramSize);
 
 	uArrayMap2D pipes = ExtractMap(program);
 
@@ -230,12 +231,15 @@ void Puzzle17_A_2019()
 
 void Puzzle17_B_2019()
 {
+	const size_t requiredProgramSize = 6 * 1024;
+
 	vector<int32_t> program;
+	program.reserve(requiredProgramSize);
 	while (PuzzleInput::PeekChar() != '\n')
 	{
 		program.push_back(Parse::GetInt32());
 	}
-	program.resize(3050);
+	program.resize(requiredProgramSize);
 
 	uArrayMap2D pipes = ExtractMap(program);
 	string path = FindFullPath(pipes);
