@@ -26,7 +26,7 @@ void Puzzle11_A_2019()
 	cfg.LargeBlockRegionSize = 17 * 1024;
 	MemArena_Configure(cfg);
 	{
-		uArrayMap2D area(Vec2Int{ -48, -48 }, 128, 128, ' ');
+		uArrayMap2D area(Vec2Int{ -64, -64 }, 128, 128, ' ');
 
 		Vec2Int robotPos;
 		Vec2Int robotDir = Vec2Int::Up();
@@ -81,7 +81,7 @@ void Puzzle11_B_2019()
 	cfg.LargeBlockRegionSize = 17 * 1024;
 	MemArena_Configure(cfg);
 	{
-		uArrayMap2D area(Vec2Int{ -48, -48 }, 128, 128, ' ');
+		uArrayMap2D area(Vec2Int{ -64, -64 }, 128, 128, ' ');
 		area({}) = '#';
 
 		Vec2Int robotPos;
