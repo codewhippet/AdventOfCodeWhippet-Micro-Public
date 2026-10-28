@@ -2,293 +2,278 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle18_2021_Types
 {
-	static const int64_t kOPEN = -1;
-	static const int64_t kCOMMA = -2;
-	static const int64_t kCLOSE = -3;
+	enum Type : int32_t
+	{
+		Pair = -1,
+		Invalid = -1024,
+	};
 }
 
 using namespace Puzzle18_2021_Types;
 
-static vector<int64_t> ParseSnailfishNumber(const string& number)
+static vector<int32_t> ParseSnailfishNumber()
 {
-	vector<int64_t> ret;
-	ret.reserve(number.size());
+	const size_t stableSnailfishSize = 32 + 1;
+	vector<int32_t> number(stableSnailfishSize, Type::Invalid);
 
-	for (char c : number)
+	int32_t current = 1;
+	for (char c : Parse::ReadUntilSeen('\n'))
 	{
 		switch (c)
 		{
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			number[current] = c - '0';
+			break;
+
 		case '[':
-			ret.push_back(kOPEN);
+			number[current] = Type::Pair;
+			current *= 2;
 			break;
 
 		case ',':
-			ret.push_back(kCOMMA);
+			current += 1;
 			break;
 
 		case ']':
-			ret.push_back(kCLOSE);
-			break;
-
-		default:
-			ret.push_back(c - '0');
+			current /= 2;
 			break;
 		}
 	}
 
-	return ret;
+	return number;
 }
 
-static string SnailfishToString(const vector<int64_t>& number)
+static void GenerateVisitOrder(const vector<int32_t>& number, vector<uint32_t>* order)
 {
-	string ret;
-	for (int64_t i : number)
+	order->clear();
+
+	const size_t recursionDepth = 6;
+	vector<int32_t> nodeStack;
+	nodeStack.reserve(recursionDepth);
+
+	uint32_t current = 1;
+	while (true)
 	{
-		switch (i)
+		while (number[current] == Type::Pair)
 		{
-		case kOPEN:
-			ret += "[";
+			order->push_back(current);
+			nodeStack.push_back(current);
+			current *= 2;
+		}
+
+		order->push_back(current);
+
+		if (nodeStack.empty())
 			break;
 
-		case kCOMMA:
-			ret += ",";
-			break;
-
-		case kCLOSE:
-			ret += "]";
-			break;
-
-		default:
-			assert(i < 10);
-			ret += (char)i + '0';
-			break;
-		}
-	}
-	return ret;
-}
-
-static vector<int64_t> Slice(const vector<int64_t>& v, int64_t offset, int64_t count = numeric_limits<int64_t>::max())
-{
-	return count == numeric_limits<int64_t>::max() ?
-		vector<int64_t>(v.begin() + offset, v.end()) :
-		vector<int64_t>(v.begin() + offset, v.begin() + offset + count);
-}
-
-static bool FindFirstAtom(const vector<int64_t>& number, size_t* index)
-{
-	for (size_t i = 0; i < number.size(); i++)
-	{
-		if (number[i] > -1)
-		{
-			*index = i;
-			return true;
-		}
-	}
-	return false;
-}
-
-static bool FindLastAtom(const vector<int64_t>& number, size_t* index)
-{
-	for (size_t i = number.size(); i > 0; i--)
-	{
-		if (number[i - 1] > -1)
-		{
-			*index = i - 1;
-			return true;
-		}
-	}
-	return false;
-}
-
-static bool FindFirstUnstableAtom(const vector<int64_t>& number, size_t* index)
-{
-	for (size_t i = 0; i < number.size(); i++)
-	{
-		if (number[i] > 9)
-		{
-			*index = i;
-			return true;
-		}
-	}
-	return false;
-}
-
-static void Append(vector<int64_t>* dest, const vector<int64_t>& source)
-{
-	dest->reserve(dest->size() + source.size());
-	for (int64_t i : source)
-	{
-		dest->push_back(i);
+		current = nodeStack.back();
+		nodeStack.pop_back();
+		current = current * 2 + 1;
 	}
 }
 
-static bool Explode(vector<int64_t>* number)
+static bool TryExplode(vector<int32_t>* number, const vector<uint32_t>& visitOrder)
 {
-	int depth = 0;
-	for (size_t i = 0; i < number->size(); i++)
+	const uint32_t unstableLayer = 4;
+	for (vector<uint32_t>::const_iterator visitIt = visitOrder.begin(); visitIt != visitOrder.end(); ++visitIt)
 	{
-		int64_t current = (*number)[i];
-		if (current > -1)
+		const uint32_t current = *visitIt;
+		if ((*number)[current] == Type::Pair)
 		{
-			continue;
-		}
-		if (current == kOPEN)
-		{
-			depth += 1;
-			if (depth == 5)
+			const uint32_t layer = 31 - countl_zero(current);
+			if (layer >= unstableLayer)
 			{
-				// Explode
-				vector<int64_t> before = Slice(*number, 0, i);
-				size_t firstLeft;
-				if (FindLastAtom(before, &firstLeft))
+				const int32_t leftChild = (*number)[current * 2];
+				const int32_t rightChild = (*number)[current * 2 + 1];
+
+				// Left
 				{
-					before[firstLeft] += (*number)[i + 1];
+					auto leftIt = find_if(make_reverse_iterator(visitIt), visitOrder.rend(),
+						[&](uint32_t i)
+						{
+							return (*number)[i] != Type::Pair;
+						});
+					if (leftIt != visitOrder.rend())
+					{
+						(*number)[*leftIt] += leftChild;
+					}
 				}
 
-				vector<int64_t> after = Slice(*number, i + 5);
-				size_t firstRight;
-				if (FindFirstAtom(after, &firstRight))
+				// Right
 				{
-					after[firstRight] += (*number)[i + 3];
+					// Skip over the current pair and the next two numbers, which are the current pair's children
+                    auto rightIt = find_if(visitIt + 3, visitOrder.end(),
+                        [&](uint32_t i)
+                        {
+                            return (*number)[i] != Type::Pair;
+                        });
+                    if (rightIt != visitOrder.end())
+                    {
+                        (*number)[*rightIt] += rightChild;
+                    }
 				}
 
-				// Recombine
-				number->clear();
-				for (int64_t b : before)
-				{
-					number->push_back(b);
-				}
-				number->push_back(0);
-				for (int64_t a : after)
-				{
-					number->push_back(a);
-				}
+				(*number)[current] = 0;
+				(*number)[current * 2] = Type::Invalid;
+				(*number)[current * 2 + 1] = Type::Invalid;
 
 				return true;
 			}
 		}
-		if (current == kCLOSE)
-		{
-			depth -= 1;
-			assert(depth >= 0);
-		}
 	}
-	assert(depth == 0);
+
 	return false;
 }
 
-static bool Split(vector<int64_t>* number)
+static bool TrySplit(vector<int32_t>* number, const vector<uint32_t>& visitOrder)
 {
-	size_t firstBigNumber;
-	if (FindFirstUnstableAtom(*number, &firstBigNumber))
+	for (vector<uint32_t>::const_iterator visitIt = visitOrder.begin(); visitIt != visitOrder.end(); ++visitIt)
 	{
-		int64_t currentValue = (*number)[firstBigNumber];
-		int64_t leftValue = currentValue / 2;
-		int64_t rightValue = (currentValue + 1) / 2;
+		const uint32_t current = *visitIt;
+		const int32_t n = (*number)[current];
+        if (n > 9)
+        {
+            const int32_t lo = n / 2;
+            const int32_t hi = n - lo;
 
-		vector<int64_t> newNumber;
-		Append(&newNumber, Slice(*number, 0, firstBigNumber));
-		newNumber.push_back(kOPEN);
-		newNumber.push_back(leftValue);
-		newNumber.push_back(kCOMMA);
-		newNumber.push_back(rightValue);
-		newNumber.push_back(kCLOSE);
-		Append(&newNumber, Slice(*number, firstBigNumber + 1));
+            (*number)[current] = Type::Pair;
+            (*number)[current * 2] = lo;
+            (*number)[current * 2 + 1] = hi;
 
-		*number = newNumber;
-		return true;
+            return true;
+        }
 	}
 
 	return false;
 }
 
-static vector<int64_t> Reduce(const vector<int64_t>& number)
+void Reduce(vector<int32_t>* number)
 {
-	vector<int64_t> ret = number;
+	const size_t unstableSnailfishSize = 32 + 32 + 1;
+	vector<uint32_t> visitOrder;
+	visitOrder.reserve(unstableSnailfishSize);
+
 	while (true)
 	{
-		if (Explode(&ret) == false)
+		GenerateVisitOrder(*number, &visitOrder);
+		if (TryExplode(number, visitOrder) == false)
 		{
-			if (Split(&ret) == false)
+			if (TrySplit(number, visitOrder) == false)
 			{
-				return ret;
+				return;
 			}
 		}
 	}
 }
 
-static vector<int64_t> Add(const vector<int64_t>& lhs, const vector<int64_t>& rhs)
+vector<int32_t> AddUnstable(const vector<int32_t>& a, const vector<int32_t>& b)
 {
-	vector<int64_t> sum;
-	sum.push_back(kOPEN);
-	Append(&sum, lhs);
-	sum.push_back(kCOMMA);
-	Append(&sum, rhs);
-	sum.push_back(kCLOSE);
+	const size_t unstableSnailfishSize = 32 + 32 + 1;
+	vector<int32_t> c(unstableSnailfishSize, Type::Invalid);
 
-	return Reduce(sum);
-}
+	c[1] = Type::Pair;
 
-static int64_t Magnitude(const vector<int64_t>& number, size_t& index)
-{
-	int64_t current = number[index];
-
-	if (current > -1)
+	const uint32_t stableSnailfishLayers = 5;
+	for (uint32_t srcLayer = 0; srcLayer < stableSnailfishLayers; srcLayer++)
 	{
-		return current;
-	}
-	else
-	{
-		assert(current == kOPEN);
-		int64_t leftValue = Magnitude(number, ++index);
-		index++;
-		assert(number[index] == kCOMMA);
-		int64_t rightValue = Magnitude(number, ++index);
-		index++;
-		assert(number[index] == kCLOSE);
+		const uint32_t srcLayerSize = 1 << srcLayer;
+		const uint32_t srcLayerIndex = srcLayerSize;
 
-		assert(leftValue > -1);
-		assert(rightValue > -1);
-		return (leftValue * 3) + (rightValue * 2);
-	}
-}
+		const uint32_t dstLayer = srcLayer + 1;
+		const uint32_t dstLayerIndex = 1 << dstLayer;
 
-static void Puzzle18_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> numbers = ReadAllLines(input);
-	vector<int64_t> sum = ParseSnailfishNumber(numbers[0]);
-	for (size_t i = 1; i < numbers.size(); i++)
-	{
-		sum = Add(sum, ParseSnailfishNumber(numbers[i]));
+		memcpy(&c[dstLayerIndex], &a[srcLayerIndex], srcLayerSize * sizeof(a[srcLayerIndex]));
+		memcpy(&c[dstLayerIndex + srcLayerSize], &b[srcLayerIndex], srcLayerSize * sizeof(a[srcLayerIndex]));
 	}
 
-	size_t index = 0;
-	string finalSum = SnailfishToString(sum);
-	int64_t answer = Magnitude(sum, index);
-
-	printf("[2021] Puzzle18_A: %" PRId64 "\n", answer);
+	return c;
 }
 
-static void Puzzle18_B(const string& filename)
+static vector<int32_t> Add(const vector<int32_t>& a, const vector<int32_t>& b)
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	const size_t unstableSnailfishSize = 32 + 32 + 1;
+	vector<int32_t> c(unstableSnailfishSize, Type::Invalid);
 
-	vector<vector<int64_t>> snailfishNumbers = MakeEnumerator(ReadAllLines(input))
-		->Select<vector<int64_t>>([](const string& line) { return ParseSnailfishNumber(line); })
-		->ToVector();
+	c[1] = Type::Pair;
 
-	int64_t largest = -1;
+	const uint32_t stableSnailfishLayers = 5;
+	for (uint32_t srcLayer = 0; srcLayer < stableSnailfishLayers; srcLayer++)
+	{
+		const uint32_t srcLayerSize = 1 << srcLayer;
+		const uint32_t srcLayerIndex = srcLayerSize;
+
+		const uint32_t dstLayer = srcLayer + 1;
+		const uint32_t dstLayerIndex = 1 << dstLayer;
+
+		memcpy(&c[dstLayerIndex], &a[srcLayerIndex], srcLayerSize * sizeof(a[srcLayerIndex]));
+		memcpy(&c[dstLayerIndex + srcLayerSize], &b[srcLayerIndex], srcLayerSize * sizeof(a[srcLayerIndex]));
+	}
+
+	vector<uint32_t> visitOrder;
+	visitOrder.reserve(c.size());
+
+	while (true)
+	{
+		GenerateVisitOrder(c, &visitOrder);
+		if (TryExplode(&c, visitOrder) == false)
+		{
+			if (TrySplit(&c, visitOrder) == false)
+			{
+				return c;
+			}
+		}
+	}
+
+	return c;
+}
+
+static int32_t Magnitude(vector<int32_t>* number)
+{
+	ranges::fill(*number | views::filter([](int32_t& n) { return n < 0; }), 0);
+
+	for (int32_t i = static_cast<int32_t>(number->size()) - 1; i > 1; i--)
+	{
+		const int32_t factor = (i & 1) ? 2 : 3;
+		(*number)[i / 2] += factor * (*number)[i];
+	}
+
+	return (*number)[1];
+}
+
+void Puzzle18_A_2021()
+{
+	vector<int32_t> sum = ParseSnailfishNumber();
+	while (PuzzleInput::NextLine())
+	{
+		sum = Add(sum, ParseSnailfishNumber());
+	}
+
+	int32_t answer = Magnitude(&sum);
+	PuzzleOutput::Submit(2021, 18, 1, answer);
+}
+
+void Puzzle18_B_2021()
+{
+	const size_t expectedSnailfishNumbers = 100;
+	vector<vector<int32_t>> snailfishNumbers;
+	snailfishNumbers.reserve(expectedSnailfishNumbers);
+	while (PuzzleInput::NextLine())
+	{
+		snailfishNumbers.push_back(ParseSnailfishNumber());
+	}
+
+	MaxValue<int32_t> largest;
 	for (size_t i = 0; i < snailfishNumbers.size(); i++)
 	{
 		for (size_t j = 0; j < snailfishNumbers.size(); j++)
@@ -296,28 +281,11 @@ static void Puzzle18_B(const string& filename)
 			if (i == j)
 				continue;
 
-			size_t index = 0;
-			largest = max<int64_t>(largest, Magnitude(Add(snailfishNumbers[i], snailfishNumbers[j]), index));
+			vector<int32_t> sum = Add(snailfishNumbers[i], snailfishNumbers[j]);
+			largest.Update(Magnitude(&sum));
 		}
 	}
 
-	int64_t answer = largest;
-
-	printf("[2021] Puzzle18_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle18_A_2021()
-{
-	Puzzle18_A(R"(z:\AoCInput\2021\Puzzle18.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 18, 1, answer);
-}
-
-void Puzzle18_B_2021()
-{
-	Puzzle18_B(R"(z:\AoCInput\2021\Puzzle18.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = largest;
 	PuzzleOutput::Submit(2021, 18, 2, answer);
 }
