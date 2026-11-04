@@ -259,6 +259,12 @@ void PuzzleInput::DropLine()
 		DropChar();
 }
 
+bool PuzzleInput::IsEmptyLine()
+{
+	int c = PeekChar();
+	return (c == '\n') || (c == EOF);
+}
+
 void PuzzleInput::DiscardRemaining()
 {
 	while (GetChar() != EOF)

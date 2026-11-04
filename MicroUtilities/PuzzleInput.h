@@ -14,6 +14,7 @@ namespace PuzzleInput
 
 	bool NextLine();
 	void DropLine();
+	bool IsEmptyLine();
 
 	void DiscardRemaining();
 }
