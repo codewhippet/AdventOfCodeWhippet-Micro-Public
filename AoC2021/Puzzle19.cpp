@@ -2,291 +2,391 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle19_2021_Types
 {
 	struct Scanner
 	{
-		vector<Vector3> Beacons;
+		vector<Vec3Int> Beacons;
 	};
-
-	static Vector3 BasisVectors[6] =
-	{
-		Vector3{  1,  0,  0 },
-		Vector3{  0,  1,  0 },
-		Vector3{  0,  0,  1 },
-
-		Vector3{ -1,  0,  0 },
-		Vector3{  0, -1,  0 },
-		Vector3{  0,  0, -1 },
-	};
-
-	static vector<Matrix43> Rotations;
-	static map<pair<size_t, size_t>, Matrix43> MostLikelyTransforms;
 }
 
 using namespace Puzzle19_2021_Types;
 
-static vector<Scanner> ReadPuzzle(istream& input)
+template <>
+struct std::hash<pair<int32_t, int32_t>>
 {
-	regex scannerPattern(R"(--- scanner (\d+) ---)");
-	regex beaconPattern(R"((-?\d+),(-?\d+),(-?\d+))");
+	size_t operator()(const pair<int32_t, int32_t>& p) const noexcept
+	{
+		uint32_t hash = 0x811c9dc5;
+
+		hash ^= p.first;
+		hash *= 0x01000193;
+		hash ^= p.second;
+		hash *= 0x01000193;
+
+		return hash;
+	}
+};
+
+template <>
+struct std::hash<pair<uint32_t, uint32_t>>
+{
+	size_t operator()(const pair<uint32_t, uint32_t>& p) const noexcept
+	{
+		uint32_t hash = 0x811c9dc5;
+
+		hash ^= p.first;
+		hash *= 0x01000193;
+		hash ^= p.second;
+		hash *= 0x01000193;
+
+		return hash;
+	}
+};
+
+static vector<Scanner> ReadPuzzle()
+{
+	const size_t expectedMaxScanners = 40;
+	const size_t expectedMaxBeacons = 28;
 
 	vector<Scanner> scanners;
-	for (const string& line : ReadAllLines(input))
+	scanners.reserve(expectedMaxScanners);
+	while (PuzzleInput::NextLine())
 	{
-		if (regex_match(line, scannerPattern))
-		{
-			scanners.push_back(Scanner{});
-			continue;
-		}
-		if (regex_match(line, beaconPattern))
-		{
-			Vector3 beacon;
-			sscanf(line.c_str(), "%" SCNd64 ",%" SCNd64 ",%" SCNd64,
-				&beacon.X, &beacon.Y, &beacon.Z);
+		Parse::DiscardExpected("---");
+		PuzzleInput::DropLine();
+		Parse::DiscardExpected("\n");
 
-			assert(scanners.empty() == false);
-			scanners.back().Beacons.push_back(beacon);
-			continue;
+		vector<Vec3Int> beacons;
+		beacons.reserve(expectedMaxBeacons);
+		while (PuzzleInput::IsEmptyLine() == false)
+		{
+			Vec3Int beacon{ Parse::GetInt32(), Parse::GetInt32(), Parse::GetInt32() };
+			Parse::DiscardExpected("\n");
+
+			beacons.push_back(beacon);
 		}
+
+		scanners.push_back({ move(beacons) });
 	}
 	return scanners;
 }
 
-static void CreateRotations()
+static vector<Mat43Int> CreateRotations()
 {
-	if (Rotations.empty())
+	vector<Mat43Int> rotations;
+
+	const Vec3Int basisVectors[6] =
 	{
-		for (int i = 0; i < _countof(BasisVectors); i++)
-		{
-			for (int j = 0; j < _countof(BasisVectors); j++)
-			{
-				// Ignore same and parallel basis vectors
-				if ((i == j) || (abs(i - j) == 3))
-				{
-					continue;
-				}
+		Vec3Int{  1,  0,  0 },
+		Vec3Int{  0,  1,  0 },
+		Vec3Int{  0,  0,  1 },
 
-				Matrix43 m = Matrix::MakeRotation(BasisVectors[i], BasisVectors[j], Cross(BasisVectors[i], BasisVectors[j]));
-				Rotations.push_back(m);
-			}
-		}
-	}
-}
+		Vec3Int{ -1,  0,  0 },
+		Vec3Int{  0, -1,  0 },
+		Vec3Int{  0,  0, -1 },
+	};
 
-void TryToMatchBeacons(vector<Vector3> a, const vector<Vector3>& b, vector<Matrix43>* matchedTransform)
-{
-	assert(a.size() == b.size());
-
-	sort(a.begin(), a.end());
-
-	// Try all rotations
-	set<size_t> matchedRotations;
-	for (size_t rotationIndex = 0; rotationIndex < Rotations.size(); rotationIndex++)
+	for (int32_t i = 0; i < _countof(basisVectors); i++)
 	{
-		vector<Vector3> b_rotated = MakeEnumerator(b)
-			->Select<Vector3>([rotationIndex](const Vector3& v) { return v * Rotations[rotationIndex]; })
-			->ToVector();
-		sort(b_rotated.begin(), b_rotated.end());
-
-		set<Vector3> differences;
-		for (size_t beaconIndex = 0; beaconIndex < a.size(); beaconIndex++)
+		for (int32_t j = 0; j < _countof(basisVectors); j++)
 		{
-			Vector3 diff = b_rotated[beaconIndex] - a[beaconIndex];
-			differences.insert(diff);
-		}
-		if (differences.size() == 1)
-		{
-			matchedTransform->push_back(Rotations[rotationIndex] * Matrix::MakeTranslation(-(*differences.begin())));
-		}
-	}
-}
-
-static int64_t Manhattan(const Vector3& a, const Vector3& b)
-{
-	return (abs(b.X - a.X) + abs(b.Y - a.Y) + abs(b.Z - a.Z));
-}
-
-static void Puzzle19_A(const string& filename)
-{
-	CreateRotations();
-
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<Scanner> scanners = ReadPuzzle(input);
-
-	map<double, multimap<size_t, Point2>> pairsToScanners;
-	for (size_t scannerIndex = 0; scannerIndex < scanners.size(); scannerIndex++)
-	{
-		const Scanner& scanner = scanners[scannerIndex];
-		for (size_t i = 0; i < scanner.Beacons.size(); i++)
-		{
-			for (size_t j = i + 1; j < scanner.Beacons.size(); j++)
-			{
-				Vector3 p = scanner.Beacons[i];
-				Vector3 q = scanner.Beacons[j];
-
-				Vector3 diff = q - p;
-				double length = sqrt(Dot(diff, diff));
-
-				pairsToScanners[length].insert(make_pair(scannerIndex, Point2{ (int64_t)i, (int64_t)j }));
-			}
-		}
-	}
-
-	for (map<double, multimap<size_t, Point2>>::const_iterator pairIt = pairsToScanners.begin(); pairIt != pairsToScanners.end(); /***/)
-	{
-		if (pairIt->second.size() > 1)
-		{
-			pairIt++;
-		}
-		else
-		{
-			pairIt = pairsToScanners.erase(pairIt);
-		}
-	}
-
-	// Match!
-	map<pair<size_t, size_t>, vector<Matrix43>> candidateTransforms;
-	for (map<double, multimap<size_t, Point2>>::const_iterator pairIt = pairsToScanners.begin(); pairIt != pairsToScanners.end(); pairIt++)
-	{
-		const multimap<size_t, Point2>& scannerToIndices = pairIt->second;
-		for (multimap<size_t, Point2>::const_iterator scannerAIt = scannerToIndices.begin(); scannerAIt != scannerToIndices.end(); scannerAIt++)
-		{
-			multimap<size_t, Point2>::const_iterator scannerBIt = scannerAIt;
-			if (++scannerBIt == scannerToIndices.end())
+			// Ignore same and parallel basis vectors
+			if ((i == j) || (abs(i - j) == 3))
 			{
 				continue;
 			}
 
-			for (/***/; scannerBIt != scannerToIndices.end(); scannerBIt++)
-			{
-				size_t scannerA = scannerAIt->first;
-				Point2 beaconIndicesFromA = scannerAIt->second;
-
-				size_t scannerB = scannerBIt->first;
-				Point2 beaconIndicesFromB = scannerBIt->second;
-
-				vector<Vector3> beaconsFromA;
-				beaconsFromA.push_back(scanners[scannerA].Beacons[beaconIndicesFromA.X]);
-				beaconsFromA.push_back(scanners[scannerA].Beacons[beaconIndicesFromA.Y]);
-
-				vector<Vector3> beaconsFromB;
-				beaconsFromB.push_back(scanners[scannerB].Beacons[beaconIndicesFromB.X]);
-				beaconsFromB.push_back(scanners[scannerB].Beacons[beaconIndicesFromB.Y]);
-
-				TryToMatchBeacons(beaconsFromA, beaconsFromB, &candidateTransforms[make_pair(scannerB, scannerA)]);
-			}
+			Mat43Int m = Matrix::MakeRotation(basisVectors[i], basisVectors[j], Cross(basisVectors[i], basisVectors[j]));
+			rotations.push_back(m);
 		}
 	}
 
-	for (map<pair<size_t, size_t>, vector<Matrix43>>::const_iterator candidate = candidateTransforms.begin();
-		candidate != candidateTransforms.end(); /***/)
-	{
-		if (candidate->second.size() < 10)
-		{
-			candidate = candidateTransforms.erase(candidate);
-		}
-		else
-		{
-			++candidate;
-		}
-	}
-
-	for (map<pair<size_t, size_t>, vector<Matrix43>>::const_reference candidate : candidateTransforms)
-	{
-		pair<size_t, size_t> fromTo = candidate.first;
-		map<Matrix43, int> transformCounts;
-		for (const Matrix43& t : candidate.second)
-		{
-			transformCounts[t]++;
-		}
-
-		pair<Matrix43, int> mostCommon = *transformCounts.begin();
-		for (const pair<Matrix43, int>& vote : transformCounts)
-		{
-			if (vote.second > mostCommon.second)
-			{
-				mostCommon = vote;
-			}
-		}
-
-		MostLikelyTransforms[fromTo] = mostCommon.first;
-	}
-
-	// Make all matrices
-	size_t allMatrixCombinations = (scanners.size() * scanners.size()) - scanners.size();
-	while (MostLikelyTransforms.size() < allMatrixCombinations)
-	{
-		for (size_t from = 0; from < scanners.size(); from++)
-		{
-			for (size_t to = 0; to < scanners.size(); to++)
-			{
-				if (from == to)
-					continue;
-
-				map<pair<size_t, size_t>, Matrix43>::const_iterator fromToTo = MostLikelyTransforms.find(make_pair(from, to));
-				if (fromToTo != MostLikelyTransforms.end())
-				{
-					MostLikelyTransforms[make_pair(to, from)] = Matrix::InvertOrthonormal(fromToTo->second);
-					continue;
-				}
-
-				for (size_t intermediate = 0; intermediate < scanners.size(); intermediate++)
-				{
-					if ((intermediate == from) || (intermediate == to))
-						continue;
-
-					map<pair<size_t, size_t>, Matrix43>::const_iterator fromToIntermediate;
-					map<pair<size_t, size_t>, Matrix43>::const_iterator intermediateToTo;
-
-					fromToIntermediate = MostLikelyTransforms.find(make_pair(from, intermediate));
-					intermediateToTo = MostLikelyTransforms.find(make_pair(intermediate, to));
-
-					if ((fromToIntermediate != MostLikelyTransforms.end()) && (intermediateToTo != MostLikelyTransforms.end()))
-					{
-						MostLikelyTransforms[make_pair(from, to)] = fromToIntermediate->second * intermediateToTo->second;
-					}
-				}
-			}
-		}
-	}
-
-	set<Vector3> allUniqueBeacons = MakeEnumerator(scanners[0].Beacons)->ToSet();
-	for (size_t scannerIndex = 1; scannerIndex < scanners.size(); scannerIndex++)
-	{
-		Matrix43 transformToScannerZero = MostLikelyTransforms[make_pair(scannerIndex, 0)];
-		vector<Vector3> transformedBeacons = MakeEnumerator(scanners[scannerIndex].Beacons)
-			->Select<Vector3>([transformToScannerZero](const Vector3& v) { return v * transformToScannerZero; })
-			->ToVector();
-
-		for (Vector3 v : transformedBeacons)
-		{
-			allUniqueBeacons.insert(v);
-		}
-	}
-
-	int64_t answer = (int64_t)allUniqueBeacons.size();
-
-	printf("[2021] Puzzle19_A: %" PRId64 "\n", answer);
+	return rotations;
 }
 
-static void Puzzle19_B(const string& filename)
+static int32_t FindRotationIndex(const Vec3Int& u, const Vec3Int& v)
 {
-	CreateRotations();
+	if (v == Vec3Int{  u.X,  u.Y,  u.Z }) return  0;
+	if (v == Vec3Int{  u.X, -u.Z,  u.Y }) return  1;
+	if (v == Vec3Int{  u.X, -u.Y, -u.Z }) return  2;
+	if (v == Vec3Int{  u.X,  u.Z, -u.Y }) return  3;
+	if (v == Vec3Int{  u.Y,  u.X, -u.Z }) return  4;
+	if (v == Vec3Int{  u.Z,  u.X,  u.Y }) return  5;
+	if (v == Vec3Int{ -u.Y,  u.X,  u.Z }) return  6;
+	if (v == Vec3Int{ -u.Z,  u.X, -u.Y }) return  7;
+	if (v == Vec3Int{  u.Y,  u.Z,  u.X }) return  8;
+	if (v == Vec3Int{ -u.Z,  u.Y,  u.X }) return  9;
+	if (v == Vec3Int{ -u.Y, -u.Z,  u.X }) return 10;
+	if (v == Vec3Int{  u.Z, -u.Y,  u.X }) return 11;
+	if (v == Vec3Int{ -u.X,  u.Y, -u.Z }) return 12;
+	if (v == Vec3Int{ -u.X,  u.Z,  u.Y }) return 13;
+	if (v == Vec3Int{ -u.X, -u.Y,  u.Z }) return 14;
+	if (v == Vec3Int{ -u.X, -u.Z, -u.Y }) return 15;
+	if (v == Vec3Int{  u.Y, -u.X,  u.Z }) return 16;
+	if (v == Vec3Int{ -u.Z, -u.X,  u.Y }) return 17;
+	if (v == Vec3Int{ -u.Y, -u.X, -u.Z }) return 18;
+	if (v == Vec3Int{  u.Z, -u.X, -u.Y }) return 19;
+	if (v == Vec3Int{  u.Y, -u.Z, -u.X }) return 20;
+	if (v == Vec3Int{  u.Z,  u.Y, -u.X }) return 21;
+	if (v == Vec3Int{ -u.Y,  u.Z, -u.X }) return 22;
+	if (v == Vec3Int{ -u.Z, -u.Y, -u.X }) return 23;
 
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	return -1;
+}
 
-	vector<Scanner> scanners = ReadPuzzle(input);
+static void VoteForTransform(const Vec3Int& worldSpaceA,
+	const Vec3Int& worldSpaceB,
+	const Vec3Int& scannerSpaceA,
+	const Vec3Int& scannerSpaceB,
+	const vector<Mat43Int>& rotations,
+	HashMap<Vec4Int, int32_t>* transforms)
+{
+	const Vec3Int u = scannerSpaceB - scannerSpaceA;
+	const Vec3Int v = worldSpaceB - worldSpaceA;
+	const int32_t rotationIndex = FindRotationIndex(u, v);
+	if (rotationIndex == -1)
+		return;
 
-	int64_t manhattan = 0;
+	assert((u * rotations[rotationIndex]) == v);
+
+	const Vec3Int translation = worldSpaceA - (scannerSpaceA * rotations[rotationIndex]);
+	(*transforms)[{ translation.X, translation.Y, translation.Z, rotationIndex }]++;
+
+	//{
+	//	Mat43Int transform = rotations[rotationIndex];
+	//	transform.m30 = translation.X;
+	//	transform.m31 = translation.Y;
+	//	transform.m32 = translation.Z;
+	//	assert((scannerSpaceA * transform) == worldSpaceA);
+	//	assert((scannerSpaceB * transform) == worldSpaceB);
+	//}
+}
+
+void Puzzle19_A_2021()
+{
+	vector<Scanner> scanners = ReadPuzzle();
+
+	vector<Mat43Int> rotations = CreateRotations();
+	vector<Vec3Int> scannerPositions(scanners.size());
+
+	vector<uint32_t> located;
+	located.reserve(scanners.size());
+	located.push_back(0);
+
+	vector<uint32_t> todo;
+	todo.reserve(scanners.size());
+	ranges::copy(ranges::iota_view(uint32_t{ 1 }, static_cast<uint32_t>(scanners.size())), back_inserter(todo));
+
+	HashSet<pair<uint32_t, uint32_t>> failedMatches(1024, { 0, 0 });
+	while (todo.size() > 0)
+	{
+		for (int32_t locatedIndex = 0; locatedIndex < located.size(); locatedIndex++)
+		{
+			const uint32_t worldSpaceScannerIndex = located[locatedIndex];
+			const Scanner& worldSpaceScanner = scanners[worldSpaceScannerIndex];
+
+			// Acceleration structure for matching against this already located beacon
+			HashMap<pair<int32_t, int32_t>, pair<uint32_t, uint32_t>> haystack(2 * 1024, { -1, -1 });
+			for (const auto& p : AllUnorderedPairs(worldSpaceScanner.Beacons.size()))
+			{
+				const Vec3Int& a = worldSpaceScanner.Beacons[p.first];
+				const Vec3Int& b = worldSpaceScanner.Beacons[p.second];
+				const Vec3Int v = b - a;
+				const pair<int32_t, int32_t> hay{ Dot(v, v), ManhattanDistance(a, b) };
+				assert(hay.first > 0);
+				assert(hay.second > 0);
+				haystack[hay]= { static_cast<uint32_t>(p.first), static_cast<uint32_t>(p.second) };
+			}
+			assert(haystack.Size() == ((worldSpaceScanner.Beacons.size() * (worldSpaceScanner.Beacons.size() - 1)) / 2));
+
+			// Check all remaining beacons in the todo list
+			for (int32_t todoIndex = 0; todoIndex < todo.size(); todoIndex++)
+			{
+				const uint32_t localSpaceScannerIndex = todo[todoIndex];
+
+				const pair<uint32_t, uint32_t> checking{ worldSpaceScannerIndex, localSpaceScannerIndex };
+				if (failedMatches.Contains(checking))
+					continue;
+
+				HashMap<Vec4Int, int32_t> likelyTransforms(16, { numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max() });
+
+				Scanner& localSpaceScanner = scanners[localSpaceScannerIndex];
+				for (const auto& p : AllUnorderedPairs(localSpaceScanner.Beacons.size()))
+				{
+					const Vec3Int& localSpaceA = localSpaceScanner.Beacons[p.first];
+					const Vec3Int& localSpaceB = localSpaceScanner.Beacons[p.second];
+					const Vec3Int u = localSpaceB - localSpaceA;
+					const pair<int32_t, int32_t> needle{ Dot(u, u), ManhattanDistance(localSpaceA, localSpaceB) };
+					assert(needle.first > 0);
+					assert(needle.second > 0);
+
+					pair<uint32_t, uint32_t> haystackPair;
+					if (haystack.TryFind(needle, &haystackPair))
+					{
+						const Vec3Int worldSpaceA = worldSpaceScanner.Beacons[haystackPair.first];
+						const Vec3Int worldSpaceB = worldSpaceScanner.Beacons[haystackPair.second];
+						VoteForTransform(worldSpaceA, worldSpaceB, localSpaceA, localSpaceB, rotations, &likelyTransforms);
+						VoteForTransform(worldSpaceA, worldSpaceB, localSpaceB, localSpaceA, rotations, &likelyTransforms);
+					}
+				}
+
+				if (likelyTransforms.Size() > 0)
+				{
+					// Put the beacons into world space
+					Vec4Int votedTransform;
+					int32_t mostVotes = 0;
+					for (const auto& vote : likelyTransforms)
+					{
+						if (vote.second > mostVotes)
+						{
+							votedTransform = vote.first;
+							mostVotes = vote.second;
+						}
+					}
+
+					Mat43Int transform = rotations[votedTransform.W];
+					transform.m30 = votedTransform.X;
+					transform.m31 = votedTransform.Y;
+					transform.m32 = votedTransform.Z;
+					for (Vec3Int& v : localSpaceScanner.Beacons)
+					{
+						v = v * transform;
+					}
+
+					scannerPositions[localSpaceScannerIndex] = { votedTransform.X, votedTransform.Y, votedTransform.Z };
+
+					located.push_back(localSpaceScannerIndex);
+					todo.erase(todo.begin() + todoIndex);
+					todoIndex--;
+				}
+				else
+				{
+					failedMatches.Insert(checking);
+				}
+			}
+		}
+	}
+
+	HashSet<Vec3Int> allBeacons(1024, { numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max() });
+	for (const auto& scanner : scanners)
+	{
+		for (const auto& beacon : scanner.Beacons)
+		{
+			allBeacons.Insert(beacon);
+		}
+	}
+
+	int32_t answer = allBeacons.Size();
+	PuzzleOutput::Submit(2021, 19, 1, answer);
+}
+
+void Puzzle19_B_2021()
+{
+		vector<Scanner> scanners = ReadPuzzle();
+
+	vector<Mat43Int> rotations = CreateRotations();
+	vector<Vec3Int> scannerPositions(scanners.size());
+
+	vector<uint32_t> located;
+	located.reserve(scanners.size());
+	located.push_back(0);
+
+	vector<uint32_t> todo;
+	todo.reserve(scanners.size());
+	ranges::copy(ranges::iota_view(uint32_t{ 1 }, static_cast<uint32_t>(scanners.size())), back_inserter(todo));
+
+	HashSet<pair<uint32_t, uint32_t>> failedMatches(1024, { 0, 0 });
+	while (todo.size() > 0)
+	{
+		for (int32_t locatedIndex = 0; locatedIndex < located.size(); locatedIndex++)
+		{
+			const uint32_t worldSpaceScannerIndex = located[locatedIndex];
+			const Scanner& worldSpaceScanner = scanners[worldSpaceScannerIndex];
+
+			// Acceleration structure for matching against this already located beacon
+			HashMap<pair<int32_t, int32_t>, pair<uint32_t, uint32_t>> haystack(2 * 1024, { -1, -1 });
+			for (const auto& p : AllUnorderedPairs(worldSpaceScanner.Beacons.size()))
+			{
+				const Vec3Int& a = worldSpaceScanner.Beacons[p.first];
+				const Vec3Int& b = worldSpaceScanner.Beacons[p.second];
+				const Vec3Int v = b - a;
+				const pair<int32_t, int32_t> hay{ Dot(v, v), ManhattanDistance(a, b) };
+				assert(hay.first > 0);
+				assert(hay.second > 0);
+				haystack[hay]= { static_cast<uint32_t>(p.first), static_cast<uint32_t>(p.second) };
+			}
+			assert(haystack.Size() == ((worldSpaceScanner.Beacons.size() * (worldSpaceScanner.Beacons.size() - 1)) / 2));
+
+			// Check all remaining beacons in the todo list
+			for (int32_t todoIndex = 0; todoIndex < todo.size(); todoIndex++)
+			{
+				const uint32_t localSpaceScannerIndex = todo[todoIndex];
+
+				const pair<uint32_t, uint32_t> checking{ worldSpaceScannerIndex, localSpaceScannerIndex };
+				if (failedMatches.Contains(checking))
+					continue;
+
+				HashMap<Vec4Int, int32_t> likelyTransforms(16, { numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max(), numeric_limits<int32_t>::max() });
+
+				Scanner& localSpaceScanner = scanners[localSpaceScannerIndex];
+				for (const auto& p : AllUnorderedPairs(localSpaceScanner.Beacons.size()))
+				{
+					const Vec3Int& localSpaceA = localSpaceScanner.Beacons[p.first];
+					const Vec3Int& localSpaceB = localSpaceScanner.Beacons[p.second];
+					const Vec3Int u = localSpaceB - localSpaceA;
+					const pair<int32_t, int32_t> needle{ Dot(u, u), ManhattanDistance(localSpaceA, localSpaceB) };
+					assert(needle.first > 0);
+					assert(needle.second > 0);
+
+					pair<uint32_t, uint32_t> haystackPair;
+					if (haystack.TryFind(needle, &haystackPair))
+					{
+						const Vec3Int worldSpaceA = worldSpaceScanner.Beacons[haystackPair.first];
+						const Vec3Int worldSpaceB = worldSpaceScanner.Beacons[haystackPair.second];
+						VoteForTransform(worldSpaceA, worldSpaceB, localSpaceA, localSpaceB, rotations, &likelyTransforms);
+						VoteForTransform(worldSpaceA, worldSpaceB, localSpaceB, localSpaceA, rotations, &likelyTransforms);
+					}
+				}
+
+				if (likelyTransforms.Size() > 0)
+				{
+					// Put the beacons into world space
+					Vec4Int votedTransform;
+					int32_t mostVotes = 0;
+					for (const auto& vote : likelyTransforms)
+					{
+						if (vote.second > mostVotes)
+						{
+							votedTransform = vote.first;
+							mostVotes = vote.second;
+						}
+					}
+
+					Mat43Int transform = rotations[votedTransform.W];
+					transform.m30 = votedTransform.X;
+					transform.m31 = votedTransform.Y;
+					transform.m32 = votedTransform.Z;
+					for (Vec3Int& v : localSpaceScanner.Beacons)
+					{
+						v = v * transform;
+					}
+
+					scannerPositions[localSpaceScannerIndex] = { votedTransform.X, votedTransform.Y, votedTransform.Z };
+
+					located.push_back(localSpaceScannerIndex);
+					todo.erase(todo.begin() + todoIndex);
+					todoIndex--;
+				}
+				else
+				{
+					failedMatches.Insert(checking);
+				}
+			}
+		}
+	}
+
+	MaxValue<int32_t> manhattan;
 	for (size_t i = 0; i < scanners.size(); i++)
 	{
 		for (size_t j = 0; j < scanners.size(); j++)
@@ -294,27 +394,10 @@ static void Puzzle19_B(const string& filename)
 			if (i == j)
 				continue;
 
-			manhattan = max(manhattan, Manhattan(Vector3{ 0, 0, 0 }, Vector3{ 0, 0, 0 } *MostLikelyTransforms[make_pair(j, i)]));
+			manhattan.Update(ManhattanDistance(scannerPositions[i], scannerPositions[j]));
 		}
 	}
 
-	int64_t answer = manhattan;
-
-	printf("[2021] Puzzle19_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle19_A_2021()
-{
-	Puzzle19_A(R"(z:\AoCInput\2021\Puzzle19.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 19, 1, answer);
-}
-
-void Puzzle19_B_2021()
-{
-	Puzzle19_B(R"(z:\AoCInput\2021\Puzzle19.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = manhattan.Get();
 	PuzzleOutput::Submit(2021, 19, 2, answer);
 }
