@@ -54,6 +54,10 @@ template int16_t Dot<int16_t>(const Vec3<int16_t>& a, const Vec3<int16_t>& b);
 template int32_t Dot<int32_t>(const Vec3<int32_t>& a, const Vec3<int32_t>& b);
 template int64_t Dot<int64_t>(const Vec3<int64_t>& a, const Vec3<int64_t>& b);
 
+template Vec3<int16_t> Cross<int16_t>(const Vec3<int16_t>& a, const Vec3<int16_t>& b);
+template Vec3<int32_t> Cross<int32_t>(const Vec3<int32_t>& a, const Vec3<int32_t>& b);
+template Vec3<int64_t> Cross<int64_t>(const Vec3<int64_t>& a, const Vec3<int64_t>& b);
+
 template int16_t ManhattanDistance<int16_t>(const Vec3<int16_t>& a, const Vec3<int16_t>& b);
 template int32_t ManhattanDistance<int32_t>(const Vec3<int32_t>& a, const Vec3<int32_t>& b);
 template int64_t ManhattanDistance<int64_t>(const Vec3<int64_t>& a, const Vec3<int64_t>& b);
