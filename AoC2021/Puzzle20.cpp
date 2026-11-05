@@ -2,197 +2,158 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle20_2021_Types
 {
 	struct Puzzle
 	{
-		string IEAString;
-		set<Point2> LightPixels;
-		set<Point2> DarkPixels;
+		vector<uint8_t> IEAString;
+
+		vector<uint8_t> LightPixelBuffer;
+		vector<uint8_t> DarkPixelBuffer;
+
+		int32_t Width = 0;
+		int32_t Height = 0;
 	};
 }
 
 using namespace Puzzle20_2021_Types;
 
-static Puzzle ReadPuzzle(istream& input)
+static Puzzle ReadPuzzle()
 {
+	const size_t imageEhancementStringSize = 512;
+	const int32_t bufferWidth = 256;
+	const int32_t bufferHeight = 256;
+	const int32_t bufferSize = bufferWidth * bufferHeight;
+	const Vec2Int pixelOffset{ 64, 64 };
+
 	Puzzle p;
+	p.Width = bufferWidth;
+	p.Height = bufferHeight;
 
-	vector<string> lines = ReadAllLines(input);
-
-	p.IEAString = lines[0];
-	for (int64_t y = 0; y + 2 < (int64_t)lines.size(); y++)
+	p.IEAString.resize(imageEhancementStringSize);
+	for (size_t i = 0; i < p.IEAString.size(); i++)
 	{
-		const string& line = lines[y + 2];
-		for (int64_t x = 0; x < (int64_t)line.size(); x++)
+		p.IEAString[i] = (PuzzleInput::GetChar() == '#') ? 1 : 0;
+	}
+
+	Parse::DiscardExpected("\n\n");
+
+	p.LightPixelBuffer.resize(bufferSize);
+	
+	ArrayWrapper2D<uint8_t> lightPixels(p.LightPixelBuffer.data(), bufferWidth, bufferHeight);
+	Vec2Int pos = pixelOffset;
+	for (int c  = PuzzleInput::GetChar(); c != EOF; c = PuzzleInput::GetChar())
+	{
+		if (c == '\n')
 		{
-			if (line[x] == '#')
-			{
-				p.LightPixels.insert(Point2{ x, y });
-			}
+			pos.X = pixelOffset.X;
+			pos.Y++;
+
+		}
+		else
+		{
+			lightPixels(pos) = (c == '#') ? 1 : 0;
+			pos.X++;
 		}
 	}
+
+	p.DarkPixelBuffer.resize(bufferSize);
 
 	return p;
 }
 
-static int PatternToIndex(const bool pattern[9])
-{
-	int index = 0;
-	for (int i = 0; i < 9; i++)
-	{
-		index <<= 1;
-		index |= pattern[i] ? 1 : 0;
-	}
-	return index;
-}
-
-static bool IsIn(const Point2& p, const set<Point2>& pixels)
-{
-	return pixels.find(p) != pixels.end();
-}
-
 static void EnhanceLightToDark(Puzzle* puzzle)
 {
-	assert(puzzle->DarkPixels.empty());
-
-	Point2 offsets[] = {
-		Point2{ -1, -1 }, Point2{  0, -1 }, Point2{  1, -1 },
-		Point2{ -1,  0 }, Point2{  0,  0 }, Point2{  1,  0 },
-		Point2{ -1,  1 }, Point2{  0,  1 }, Point2{  1,  1 },
+	const Vec2Int offsets[] = {
+		Vec2Int{ -1, -1 }, Vec2Int{  0, -1 }, Vec2Int{  1, -1 },
+		Vec2Int{ -1,  0 }, Vec2Int{  0,  0 }, Vec2Int{  1,  0 },
+		Vec2Int{ -1,  1 }, Vec2Int{  0,  1 }, Vec2Int{  1,  1 },
 	};
 
-	set<Point2> pixelsToCheck;
-	for (const Point2& p : puzzle->LightPixels)
+	const ArrayWrapper2D<uint8_t> lightPixels(puzzle->LightPixelBuffer.data(), puzzle->Width, puzzle->Height);
+
+	ArrayWrapper2D<uint8_t> darkPixels(puzzle->DarkPixelBuffer.data(), puzzle->Width, puzzle->Height);
+	for (const Vec2Int& pixel : uGridRange<Vec2Int>({ 1, 1 }, { puzzle->Width - 1, puzzle->Height - 1 }))
 	{
-		for (int i = 0; i < 9; i++)
+		uint32_t pattern = 0;
+		for (const Vec2Int& offset : offsets)
 		{
-			pixelsToCheck.insert(p + offsets[i]);
+			pattern = (pattern << 1) | lightPixels(pixel + offset);
 		}
+
+		uint8_t newPixel = puzzle->IEAString[pattern];
+		darkPixels(pixel) = 1 - newPixel;
 	}
 
-	set<Point2> newDarkPixels;
-	for (const Point2& pixel : pixelsToCheck)
-	{
-		bool pattern[9];
-		for (int i = 0; i < 9; i++)
-		{
-			Point2 testPixel = pixel + offsets[i];
-			pattern[i] = IsIn(testPixel, puzzle->LightPixels) == true;
-		}
-
-		int index = PatternToIndex(pattern);
-		if (puzzle->IEAString[index] == '.')
-		{
-			newDarkPixels.insert(pixel);
-		}
-	}
-
-	puzzle->LightPixels.clear();
-	puzzle->DarkPixels = newDarkPixels;
+	ranges::fill(puzzle->LightPixelBuffer, uint8_t{ 0 });
 }
 
 static void EnhanceDarkToLight(Puzzle* puzzle)
 {
-	assert(puzzle->LightPixels.empty());
-
-	Point2 offsets[] = {
-		Point2{ -1, -1 }, Point2{  0, -1 }, Point2{  1, -1 },
-		Point2{ -1,  0 }, Point2{  0,  0 }, Point2{  1,  0 },
-		Point2{ -1,  1 }, Point2{  0,  1 }, Point2{  1,  1 },
+	const Vec2Int offsets[] = {
+		Vec2Int{ -1, -1 }, Vec2Int{  0, -1 }, Vec2Int{  1, -1 },
+		Vec2Int{ -1,  0 }, Vec2Int{  0,  0 }, Vec2Int{  1,  0 },
+		Vec2Int{ -1,  1 }, Vec2Int{  0,  1 }, Vec2Int{  1,  1 },
 	};
 
-	set<Point2> pixelsToCheck;
-	for (const Point2& p : puzzle->DarkPixels)
+	assert(popcount(puzzle->IEAString.size()) == 1);
+	const uint32_t patternMask = static_cast<uint32_t>(puzzle->IEAString.size()) - 1;
+
+	const ArrayWrapper2D<uint8_t> darkPixels(puzzle->DarkPixelBuffer.data(), puzzle->Width, puzzle->Height);
+
+	ArrayWrapper2D<uint8_t> lightPixels(puzzle->LightPixelBuffer.data(), puzzle->Width, puzzle->Height);
+	for (const Vec2Int& pixel : uGridRange<Vec2Int>({ 1, 1 }, { puzzle->Width - 1, puzzle->Height - 1 }))
 	{
-		for (int i = 0; i < 9; i++)
+		uint32_t pattern = 0;
+		for (const Vec2Int& offset : offsets)
 		{
-			pixelsToCheck.insert(p + offsets[i]);
+			pattern = (pattern << 1) | darkPixels(pixel + offset);
 		}
+		pattern ^= patternMask;
+
+		uint8_t newPixel = puzzle->IEAString[pattern];
+		lightPixels(pixel) = newPixel;
 	}
 
-	set<Point2> newLightPixels;
-	for (const Point2& pixel : pixelsToCheck)
-	{
-		bool pattern[9];
-		for (int i = 0; i < 9; i++)
-		{
-			Point2 testPixel = pixel + offsets[i];
-			pattern[i] = IsIn(testPixel, puzzle->DarkPixels) == false;
-		}
-
-		int index = PatternToIndex(pattern);
-		if (puzzle->IEAString[index] == '#')
-		{
-			newLightPixels.insert(pixel);
-		}
-	}
-
-	puzzle->LightPixels = newLightPixels;
-	puzzle->DarkPixels.clear();
-}
-
-static void Puzzle20_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Puzzle p = ReadPuzzle(input);
-
-	// The *actual* puzzle alternates infinite fields of light/dark
-	assert(p.IEAString[0] == '#');
-	assert(p.IEAString[511] == '.');
-
-	for (int i = 0; i < 2; i += 2)
-	{
-		EnhanceLightToDark(&p);
-		EnhanceDarkToLight(&p);
-	}
-
-	int64_t answer = (int64_t)p.LightPixels.size();
-
-	printf("[2021] Puzzle20_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle20_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	Puzzle p = ReadPuzzle(input);
-
-	// The *actual* puzzle alternates infinite fields of light/dark
-	assert(p.IEAString[0] == '#');
-	assert(p.IEAString[511] == '.');
-
-	for (int i = 0; i < 50; i += 2)
-	{
-		EnhanceLightToDark(&p);
-		EnhanceDarkToLight(&p);
-	}
-
-	int64_t answer = (int64_t)p.LightPixels.size();
-
-	printf("[2021] Puzzle20_B: %" PRId64 "\n", answer);
+	ranges::fill(puzzle->DarkPixelBuffer, uint8_t{ 0 });
 }
 
 void Puzzle20_A_2021()
 {
-	Puzzle20_A(R"(z:\AoCInput\2021\Puzzle20.txt)");
+	const size_t enhancementIterations = 2;
 
-	int32_t answer = 0;
+	Puzzle p = ReadPuzzle();
+
+	// The *actual* puzzle alternates infinite fields of light/dark
+	assert(p.IEAString[0] == 1);
+	assert(p.IEAString[511] == 0);
+
+	for (size_t i = 0; i < enhancementIterations; i += 2)
+	{
+		EnhanceLightToDark(&p);
+		EnhanceDarkToLight(&p);
+	}
+
+	int32_t answer = static_cast<int32_t>(ranges::count(p.LightPixelBuffer, 1));
 	PuzzleOutput::Submit(2021, 20, 1, answer);
 }
 
 void Puzzle20_B_2021()
 {
-	Puzzle20_B(R"(z:\AoCInput\2021\Puzzle20.txt)");
+	const size_t enhancementIterations = 50;
 
-	int32_t answer = 0;
+	Puzzle p = ReadPuzzle();
+
+	// The *actual* puzzle alternates infinite fields of light/dark
+	assert(p.IEAString[0] == 1);
+	assert(p.IEAString[511] == 0);
+
+	for (size_t i = 0; i < enhancementIterations; i += 2)
+	{
+		EnhanceLightToDark(&p);
+		EnhanceDarkToLight(&p);
+	}
+
+	int32_t answer = static_cast<int32_t>(ranges::count(p.LightPixelBuffer, 1));
 	PuzzleOutput::Submit(2021, 20, 2, answer);
 }
