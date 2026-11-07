@@ -2,278 +2,136 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle21_2021_Types
 {
-	struct GameState
+	enum : size_t
 	{
-		int CurrentPlayer = 0;
-		int Positions[2] = { 0, 0 };
-		int Scores[2] = { 0, 0 };
+		NumPlayers = 2,
+		NumPositions = 10,
+		ScoreToWin = 21,
+		MaxTurns = ScoreToWin,
 	};
 
-	bool operator<(const GameState& a, const GameState& b)
+	struct Game
 	{
-		if (a.CurrentPlayer != b.CurrentPlayer) return a.CurrentPlayer < b.CurrentPlayer;
-		if (a.Positions[0] != b.Positions[0]) return a.Positions[0] < b.Positions[0];
-		if (a.Positions[1] != b.Positions[1]) return a.Positions[1] < b.Positions[1];
-		if (a.Scores[0] != b.Scores[0]) return a.Scores[0] < b.Scores[0];
-		return a.Scores[1] < b.Scores[1];
-	}
+		// Using way more memory than we need to, but it's handy to have a history for debugging
+		int64_t Universes[MaxTurns][NumPlayers][NumPositions][ScoreToWin] = {};
+	};
 }
 
 using namespace Puzzle21_2021_Types;
 
-static vector<int> GetStartingPositions(istream& input)
+static int32_t Roll(int32_t* dice)
 {
-	vector<string> lines = ReadAllLines(input);
+	int32_t roll = 0;
 
-	vector<int> positions = { 0, 0 };
-	for (int i = 0; i < 2; i++)
-	{
-		sscanf(lines[i].c_str(), "Player %*c starting position: %d", &positions[i]);
-		positions[i]--;
-	}
-
-	return positions;
-}
-
-static int g_diceA = 0;
-
-static int Roll_A()
-{
-	int roll = 0;
-
-	roll += g_diceA + 1;
-	g_diceA = (g_diceA + 1) % 100;
-	roll += g_diceA + 1;
-	g_diceA = (g_diceA + 1) % 100;
-	roll += g_diceA + 1;
-	g_diceA = (g_diceA + 1) % 100;
+	roll += ++(*dice);
+	*dice %= 100;
+	roll += ++(*dice);
+	*dice %= 100;
+	roll += ++(*dice);
+	*dice %= 100;
 
 	return roll;
 }
 
-// 1 1 1 = 3
-// 1 1 2 = 4
-// 1 1 3 = 5
-// 1 2 1 = 4
-// 1 2 2 = 5
-// 1 2 3 = 6
-// 1 3 1 = 5
-// 1 3 2 = 6
-// 1 3 3 = 7
-
-// 2 1 1 = 4
-// 2 1 2 = 5
-// 2 1 3 = 6
-// 2 2 1 = 5
-// 2 2 2 = 6
-// 2 2 3 = 7
-// 2 3 1 = 6
-// 2 3 2 = 7
-// 2 3 3 = 8
-
-// 3 1 1 = 5
-// 3 1 2 = 6
-// 3 1 3 = 7
-// 3 2 1 = 6
-// 3 2 2 = 7
-// 3 2 3 = 8
-// 3 3 1 = 7
-// 3 3 2 = 8
-// 3 3 3 = 9
-
-// 3 = 1
-// 4 = 3
-// 5 = 6
-// 6 = 7
-// 7 = 6
-// 8 = 3
-// 9 = 1
-
-static map<GameState, int64_t> g_cachedOutcomes;
-
-static GameState UpdateGame(const GameState& current, int roll)
+void Puzzle21_A_2021()
 {
-	GameState next = current;
-	next.Positions[current.CurrentPlayer] = (current.Positions[current.CurrentPlayer] + roll) % 10;
-	next.Scores[current.CurrentPlayer] += next.Positions[current.CurrentPlayer] + 1;
-	next.CurrentPlayer = 1 - current.CurrentPlayer;
-	return next;
-}
+	array<char, 32> line;
+	Parse::ReadNonEmptyLine(line.data(), line.size());
+	const int32_t p1StartingPosition = line[28] - '0' - 1;
+	Parse::ReadNonEmptyLine(line.data(), line.size());
+	const int32_t p2StartingPosition = line[28] - '0' - 1;
 
-static int64_t Player1WinOutcomes(const GameState& current)
-{
-	map<GameState, int64_t>::const_iterator cachedOutcome = g_cachedOutcomes.find(current);
-	if (cachedOutcome != g_cachedOutcomes.end())
-		return cachedOutcome->second;
+	array<int32_t, 2> positions{ p1StartingPosition, p2StartingPosition };
+	array<int32_t, 2> scores = { 0, 0 };
 
-	int64_t numberOfWins = 0;
+	const int32_t scoreToWin = 1000;
 
-	// 1 universe in which we roll 3
-	{
-		GameState next = UpdateGame(current, 3);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 1 : 0;
-		}
-		else
-		{
-			numberOfWins += 1 * Player1WinOutcomes(next);
-		}
-	}
-
-	// 3 universes in which we roll 4
-	{
-		GameState next = UpdateGame(current, 4);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 3 : 0;
-		}
-		else
-		{
-			numberOfWins += 3 * Player1WinOutcomes(next);
-		}
-	}
-
-	// 6 universes in which we roll 5
-	{
-		GameState next = UpdateGame(current, 5);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 6 : 0;
-		}
-		else
-		{
-			numberOfWins += 6 * Player1WinOutcomes(next);
-		}
-	}
-
-	// 7 universes in which we roll 6
-	{
-		GameState next = UpdateGame(current, 6);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 7 : 0;
-		}
-		else
-		{
-			numberOfWins += 7 * Player1WinOutcomes(next);
-		}
-	}
-
-	// 6 universes in which we roll 7
-	{
-		GameState next = UpdateGame(current, 7);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 6 : 0;
-		}
-		else
-		{
-			numberOfWins += 6 * Player1WinOutcomes(next);
-		}
-	}
-
-	// 3 universes in which we roll 8
-	{
-		GameState next = UpdateGame(current, 8);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 3 : 0;
-		}
-		else
-		{
-			numberOfWins += 3 * Player1WinOutcomes(next);
-		}
-	}
-
-	// 1 universe in which we roll 9
-	{
-		GameState next = UpdateGame(current, 9);
-		if (next.Scores[current.CurrentPlayer] >= 21)
-		{
-			numberOfWins += current.CurrentPlayer == 0 ? 1 : 0;
-		}
-		else
-		{
-			numberOfWins += 1 * Player1WinOutcomes(next);
-		}
-	}
-
-	g_cachedOutcomes[current] = numberOfWins;
-	return numberOfWins;
-}
-
-static void Puzzle21_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int> positions = GetStartingPositions(input);
-	vector<int> scores = { 0, 0 };
-
-	int numRolls = 0;
-
-	int currentPlayer = 0;
+	int32_t numRolls = 0;
+	int32_t currentPlayer = 0;
+	int32_t dice = 0;
 	while (true)
 	{
 		numRolls += 3;
 
-		positions[currentPlayer] = (positions[currentPlayer] + Roll_A()) % 10;
+		positions[currentPlayer] = (positions[currentPlayer] + Roll(&dice)) % 10;
 		scores[currentPlayer] += positions[currentPlayer] + 1;
 
-		if (scores[currentPlayer] >= 1000)
+		if (scores[currentPlayer] >= scoreToWin)
 			break;
 
 		currentPlayer = 1 - currentPlayer;
 	}
 
-	int64_t answer = numRolls * scores[1 - currentPlayer];
-
-	printf("[2021] Puzzle21_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle21_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int> positions = GetStartingPositions(input);
-
-	GameState start;
-	start.Positions[0] = positions[0];
-	start.Positions[1] = positions[1];
-
-	int64_t numberOfPlayer1Wins = Player1WinOutcomes(start);
-
-	swap(start.Positions[0], start.Positions[1]);
-	start.CurrentPlayer = 1;
-
-	int64_t numberOfPlayer2Wins = Player1WinOutcomes(start);
-
-	int64_t answer = max(numberOfPlayer1Wins, numberOfPlayer2Wins);
-
-	printf("[2021] Puzzle21_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle21_A_2021()
-{
-	Puzzle21_A(R"(z:\AoCInput\2021\Puzzle21.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = numRolls * scores[1 - currentPlayer];
 	PuzzleOutput::Submit(2021, 21, 1, answer);
 }
 
 void Puzzle21_B_2021()
 {
-	Puzzle21_B(R"(z:\AoCInput\2021\Puzzle21.txt)");
+	array<char, 32> line;
+	Parse::ReadNonEmptyLine(line.data(), line.size());
+	const int32_t p1StartingPosition = line[28] - '0' - 1;
+	Parse::ReadNonEmptyLine(line.data(), line.size());
+	const int32_t p2StartingPosition = line[28] - '0' - 1;
 
-	int32_t answer = 0;
+	Game *game = new Game();
+	game->Universes[0][0][p1StartingPosition][0] = 1;
+	game->Universes[1][1][p2StartingPosition][0] = 1;
+	Game& g = *game;
+
+	const vector<pair<int32_t, int32_t>> rolls =
+	{
+		// X universes in which we roll Y
+		{ 1, 3 },
+		{ 3, 4 },
+		{ 6, 5 },
+		{ 7, 6 },
+		{ 6, 7 },
+		{ 3, 8 },
+		{ 1, 9 },
+	};
+
+	array<int64_t, 2> playerWins = {};
+	int64_t otherPlayerActiveUniverses = 1;
+	for (int32_t turn = 0; turn < MaxTurns; turn++)
+	{
+		int currentPlayer = turn & 1;
+
+		int64_t nextActiveUniverses = 0;
+		for (uint32_t position = 0; position < NumPositions; position++)
+		{
+			for (uint32_t score = 0; score < ScoreToWin; score++)
+			{
+				int64_t playerUniverses = g.Universes[turn][currentPlayer][position][score];
+				if (playerUniverses == 0)
+					continue;
+
+				for (const auto& roll : rolls)
+				{
+					int64_t nextPosition = (position + roll.second) % 10;
+					int64_t nextScore = score + nextPosition + 1;
+					if (nextScore >= ScoreToWin)
+					{
+						playerWins[currentPlayer] += playerUniverses * roll.first * otherPlayerActiveUniverses;
+					}
+					else
+					{
+						g.Universes[turn + 2][currentPlayer][nextPosition][nextScore] += playerUniverses * roll.first;
+						nextActiveUniverses += playerUniverses * roll.first;
+					}
+				}
+			}
+		}
+
+		otherPlayerActiveUniverses = nextActiveUniverses;
+		if (otherPlayerActiveUniverses == 0)
+			break;
+	}
+
+	delete game;
+
+	int64_t answer = max(playerWins[0], playerWins[1]);
 	PuzzleOutput::Submit(2021, 21, 2, answer);
 }
