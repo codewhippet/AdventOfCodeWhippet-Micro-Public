@@ -2,277 +2,282 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle22_2021_Types
 {
-	static int spawnCount = 0;
+	struct Command
+	{
+		bool On = false;
+
+		// Half-open range
+		Vec3Int Begin;
+		Vec3Int End;
+	};
 
 	struct Cube
 	{
-		bool On = false;
-		Vector3 Min;
-		Vector3 Max;
-	};
-
-	struct CoordinateMapping
-	{
-		map<int64_t, int64_t> ActualToVirtual;
-		map<int64_t, int64_t> VirtualToActual;
-	};
-
-	struct LightVolume
-	{
-		LightVolume(int64_t x, int64_t y, int64_t z)
-		{
-			SizeX = x;
-			SizeY = y;
-			SizeZ = z;
-
-			DataSize = SizeX * SizeY * SizeZ;
-			Data = new bool[DataSize];
-			memset(Data, 0, DataSize * sizeof(Data[0]));
-		}
-
-		~LightVolume()
-		{
-			delete[] Data;
-		}
-
-		bool& operator()(int64_t x, int64_t y, int64_t z)
-		{
-			int64_t xOffset = x;
-			int64_t yOffset = y * SizeX;
-			int64_t zOffset = z * SizeX * SizeY;
-			return Data[xOffset + yOffset + zOffset];
-		}
-
-	private:
-		int64_t SizeX, SizeY, SizeZ;
-		int64_t DataSize;
-		bool* Data;
+		// Half-open range
+		Vec3Int Begin;
+		Vec3Int End;
 	};
 }
 
 using namespace Puzzle22_2021_Types;
 
-static vector<Cube> ReadCubes(istream& input)
-{
-	vector<Cube> ret;
-
-	vector<string> lines = ReadAllLines(input);
-
-	basic_regex format(R"((\w+) x=(-?\d+)..(-?\d+),y=(-?\d+)..(-?\d+),z=(-?\d+)..(-?\d+))");
-	for (const string& line : lines)
-	{
-		smatch match;
-		bool matched = regex_match(line, match, format);
-		assert(matched);
-		(void)matched;
-
-		Cube c;
-		c.On = match[1].str() == "on";
-
-		c.Min.X = stoll(match[2].str());
-		c.Max.X = stoll(match[3].str());
-
-		c.Min.Y = stoll(match[4].str());
-		c.Max.Y = stoll(match[5].str());
-
-		c.Min.Z = stoll(match[6].str());
-		c.Max.Z = stoll(match[7].str());
-
-		ret.push_back(c);
-	}
-
-	return ret;
-}
-
 static bool Intersect(const Cube& a, const Cube& b, Cube* clipped)
 {
-	clipped->Min.X = max(a.Min.X, b.Min.X);
-	clipped->Min.Y = max(a.Min.Y, b.Min.Y);
-	clipped->Min.Z = max(a.Min.Z, b.Min.Z);
-
-	clipped->Max.X = min(a.Max.X, b.Max.X);
-	clipped->Max.Y = min(a.Max.Y, b.Max.Y);
-	clipped->Max.Z = min(a.Max.Z, b.Max.Z);
+	clipped->Begin = Vec3Int::MaxElements(a.Begin, b.Begin);
+	clipped->End = Vec3Int::MinElements(a.End, b.End);
 
 	return
-		clipped->Min.X <= clipped->Max.X &&
-		clipped->Min.Y <= clipped->Max.Y &&
-		clipped->Min.Z <= clipped->Max.Z;
+		clipped->Begin.X < clipped->End.X &&
+		clipped->Begin.Y < clipped->End.Y &&
+		clipped->Begin.Z < clipped->End.Z;
 }
 
-static void Puzzle22_A(const string& filename)
+static bool Overlaps(const Cube& a, const Cube& b)
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	if ((a.End.X <= b.Begin.X) || (a.Begin.X >= b.End.X))
+		return false;
+	if ((a.End.Y <= b.Begin.Y) || (a.Begin.Y >= b.End.Y))
+		return false;
+	if ((a.End.Z <= b.Begin.Z) || (a.Begin.Z >= b.End.Z))
+		return false;
 
-	const Vector3 coordinateOffset{ 200000, 200000, 200000 };
-	vector<Cube> cubes = ReadCubes(input);
-
-	cubes = MakeEnumerator(cubes)
-		->Select<Cube>([&](const Cube& c)
-			{
-				Cube offset = c;
-				offset.Min = c.Min + coordinateOffset;
-				assert(offset.Min.X > -1);
-				assert(offset.Min.Y > -1);
-				assert(offset.Min.Z > -1);
-				offset.Max = c.Max + coordinateOffset;
-				return offset;
-			})
-		->ToVector();
-
-	Cube region;
-	region.Min = Vector3{ -50, -50, -50 } + coordinateOffset;
-	region.Max = Vector3{ 50, 50, 50 } + coordinateOffset;
-
-	set<Vector3> on;
-	for (const Cube& c : cubes)
-	{
-		Cube clipped;
-		if (Intersect(region, c, &clipped))
-		{
-			for (int64_t x = clipped.Min.X; x <= clipped.Max.X; x++)
-			{
-				for (int64_t y = clipped.Min.Y; y <= clipped.Max.Y; y++)
-				{
-					for (int64_t z = clipped.Min.Z; z <= clipped.Max.Z; z++)
-					{
-						if (c.On)
-						{
-							on.insert(Vector3{ x, y, z });
-						}
-						else
-						{
-							on.erase(Vector3{ x, y, z });
-						}
-					}
-				}
-			}
-		}
-	}
-
-	int64_t answer = (int64_t)on.size();
-
-	printf("[2021] Puzzle22_A: %" PRId64 "\n", answer);
+	return true;
 }
 
-static void Puzzle22_B(const string& filename)
+static void ShardExisting(const Cube& splitter, const vector<Cube>& src, vector<Cube>* dst)
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<Cube> cubes = ReadCubes(input);
-
-	auto getAxisValues = [](const vector<Cube>& cubes, const function<pair<int64_t, int64_t>(const Cube&)>& get) -> vector<int64_t>
-		{
-			set<int64_t> axis;
-			for (const Cube& c : cubes)
-			{
-				pair<int64_t, int64_t> axisValues = get(c);
-				axis.insert(axisValues.first);
-				axis.insert(axisValues.second);
-				axis.insert(axisValues.second + 1);
-			}
-			return MakeEnumerator(axis)->ToVector();
-		};
-
-	vector<int64_t> sortedXValues = getAxisValues(cubes, [](const Cube& c) { return make_pair(c.Min.X, c.Max.X);  });
-	vector<int64_t> sortedYValues = getAxisValues(cubes, [](const Cube& c) { return make_pair(c.Min.Y, c.Max.Y);  });
-	vector<int64_t> sortedZValues = getAxisValues(cubes, [](const Cube& c) { return make_pair(c.Min.Z, c.Max.Z);  });
-
-	auto generateMapping = [](const vector<int64_t>& sortedValues) -> CoordinateMapping
-		{
-			CoordinateMapping axisMapping;
-			for (int64_t i = 0; i < (int64_t)sortedValues.size(); i++)
-			{
-				axisMapping.ActualToVirtual[sortedValues[i]] = i;
-				axisMapping.VirtualToActual[i] = sortedValues[i];
-			}
-			return axisMapping;
-		};
-
-	CoordinateMapping xAxisMapping = generateMapping(sortedXValues);
-	CoordinateMapping yAxisMapping = generateMapping(sortedYValues);
-	CoordinateMapping zAxisMapping = generateMapping(sortedZValues);
-
-	vector<Cube> virtualCubes = MakeEnumerator(cubes)
-		->Select<Cube>([&xAxisMapping, &yAxisMapping, &zAxisMapping](const Cube& c)
-			{
-				Cube v;
-
-				v.On = c.On;
-
-				v.Min.X = xAxisMapping.ActualToVirtual.at(c.Min.X);
-				v.Min.Y = yAxisMapping.ActualToVirtual.at(c.Min.Y);
-				v.Min.Z = zAxisMapping.ActualToVirtual.at(c.Min.Z);
-
-				v.Max.X = xAxisMapping.ActualToVirtual.at(c.Max.X);
-				v.Max.Y = yAxisMapping.ActualToVirtual.at(c.Max.Y);
-				v.Max.Z = zAxisMapping.ActualToVirtual.at(c.Max.Z);
-
-				return v;
-			})
-		->ToVector();
-
-	LightVolume turnedOn(sortedXValues.size() + 1, sortedYValues.size() + 1, sortedZValues.size() + 1);
-	for (const Cube& cube : virtualCubes)
+	for (const Cube& a : src)
 	{
-		for (int64_t x = cube.Min.X; x <= cube.Max.X; x++)
+		if (Overlaps(a, splitter) == false)
 		{
-			for (int64_t y = cube.Min.Y; y <= cube.Max.Y; y++)
-			{
-				for (int64_t z = cube.Min.Z; z <= cube.Max.Z; z++)
-				{
-					turnedOn(x, y, z) = cube.On;
-				}
-			}
+			dst->push_back(a);
+			continue;
+		}
+
+		Cube clipped = a;
+
+		// Carve slabs on X
+		if (clipped.End.X <= splitter.Begin.X)
+		{
+			dst->push_back(clipped);
+			continue;
+		}
+		if (clipped.Begin.X < splitter.Begin.X)
+		{
+			Cube slab = clipped;
+			slab.End.X = splitter.Begin.X;
+			dst->push_back(slab);
+			clipped.Begin.X = splitter.Begin.X;
+		}
+		if (clipped.Begin.X >= splitter.End.X)
+		{
+			dst->push_back(clipped);
+			continue;
+		}
+		if (clipped.End.X > splitter.End.X)
+		{
+			Cube slab = clipped;
+			slab.Begin.X = splitter.End.X;
+			dst->push_back(slab);
+			clipped.End.X = splitter.End.X;
+		}
+
+		// Carve slabs on Y
+		if (clipped.End.Y <= splitter.Begin.Y)
+		{
+			dst->push_back(clipped);
+			continue;
+		}
+		if (clipped.Begin.Y < splitter.Begin.Y)
+		{
+			Cube slab = clipped;
+			slab.End.Y = splitter.Begin.Y;
+			dst->push_back(slab);
+			
+			clipped.Begin.Y = splitter.Begin.Y;
+		}
+		if (clipped.Begin.Y >= splitter.End.Y)
+		{
+			dst->push_back(clipped);
+			continue;
+		}
+		if (clipped.End.Y > splitter.End.Y)
+		{
+			Cube slab = clipped;
+			slab.Begin.Y = splitter.End.Y;
+			dst->push_back(slab);
+			clipped.End.Y = splitter.End.Y;
+		}
+
+		// Carve slabs on Z
+		if (clipped.End.Z <= splitter.Begin.Z)
+		{
+			dst->push_back(clipped);
+			continue;
+		}
+		if (clipped.Begin.Z < splitter.Begin.Z)
+		{
+			Cube slab = clipped;
+			slab.End.Z = splitter.Begin.Z;
+			dst->push_back(slab);
+			
+			clipped.Begin.Z = splitter.Begin.Z;
+		}
+		if (clipped.Begin.Z >= splitter.End.Z)
+		{
+			dst->push_back(clipped);
+			continue;
+		}
+		if (clipped.End.Z > splitter.End.Z)
+		{
+			Cube slab = clipped;
+			slab.Begin.Z = splitter.End.Z;
+			dst->push_back(slab);
+			clipped.End.Z = splitter.End.Z;
 		}
 	}
-
-	int64_t sum = 0;
-	for (int64_t x = 0; x + 1 < (int64_t)sortedXValues.size(); x++)
-	{
-		for (int64_t y = 0; y + 1 < (int64_t)sortedYValues.size(); y++)
-		{
-			for (int64_t z = 0; z + 1 < (int64_t)sortedZValues.size(); z++)
-			{
-				if (turnedOn(x, y, z))
-				{
-					Vector3 min = Vector3{ sortedXValues[x + 0], sortedYValues[y + 0], sortedZValues[z + 0] };
-					Vector3 max = Vector3{ sortedXValues[x + 1], sortedYValues[y + 1], sortedZValues[z + 1] };
-
-					Vector3 diff = max - min;
-					int64_t volume = diff.X * diff.Y * diff.Z;
-					sum += volume;
-				}
-			}
-		}
-	}
-
-	int64_t answer = sum;
-
-	printf("[2021] Puzzle22_B: %" PRId64 "\n", answer);
 }
 
 void Puzzle22_A_2021()
 {
-	Puzzle22_A(R"(z:\AoCInput\2021\Puzzle22.txt)");
+	const size_t numCubesToReserve = 256;
+
+	array<vector<Cube>, 2> cubes;
+	cubes[0].reserve(numCubesToReserve);
+	cubes[1].reserve(numCubesToReserve);
+
+	const Cube region{ Vec3Int{ -50, -50, -50 }, Vec3Int{ 51, 51, 51 } };
+
+	size_t activeBuffer = 0;
+	while (PuzzleInput::NextLine())
+	{
+
+
+		PuzzleInput::DropChar();
+		bool on = PuzzleInput::GetChar() == 'n';
+		(void)on;
+
+		Cube c;
+		c.Begin.X = Parse::GetInt32();
+		c.End.X = Parse::GetInt32() + 1;
+		c.Begin.Y = Parse::GetInt32();
+		c.End.Y = Parse::GetInt32() + 1;
+		c.Begin.Z = Parse::GetInt32();
+		c.End.Z = Parse::GetInt32() + 1;
+
+		Cube clipped;
+		if (Intersect(c, region, &clipped))
+		{
+			const vector<Cube>& src = cubes[activeBuffer];
+			vector<Cube>& dst = cubes[1 - activeBuffer];
+			dst.clear();
+
+			ShardExisting(clipped, src, &dst);
+			if (on)
+			{
+				dst.push_back(clipped);
+			}
+
+			activeBuffer = 1 - activeBuffer;
+		}		
+	}
 
 	int32_t answer = 0;
+	for (const Cube& c : cubes[activeBuffer])
+	{
+		int32_t volume = 1;
+		volume *= c.End.X - c.Begin.X;
+		volume *= c.End.Y - c.Begin.Y;
+		volume *= c.End.Z - c.Begin.Z;
+		assert(volume > 0);
+		answer += volume;
+	}
+	
 	PuzzleOutput::Submit(2021, 22, 1, answer);
 }
 
 void Puzzle22_B_2021()
 {
-	Puzzle22_B(R"(z:\AoCInput\2021\Puzzle22.txt)");
+	const size_t expectedInputCommands = 420;
+	const size_t numCubesToReserve = 1024;
 
-	int32_t answer = 0;
+	vector<Command> commands;
+	commands.reserve(expectedInputCommands);
+	while (PuzzleInput::NextLine())
+	{
+		PuzzleInput::DropChar();
+
+		Command c;
+		c.On = PuzzleInput::GetChar() == 'n';
+
+		c.Begin.X = Parse::GetInt32();
+		c.End.X = Parse::GetInt32() + 1;
+		c.Begin.Y = Parse::GetInt32();
+		c.End.Y = Parse::GetInt32() + 1;
+		c.Begin.Z = Parse::GetInt32();
+		c.End.Z = Parse::GetInt32() + 1;
+
+		commands.push_back(c);
+	}
+
+	array<vector<Cube>, 2> cubes;
+	cubes[0].reserve(numCubesToReserve);
+	cubes[1].reserve(numCubesToReserve);
+
+	int64_t answer = 0;
+
+	const int32_t inf = 1000000;
+	const array<Cube, 8> octants =
+	{
+		Cube{ {    0,    0,    0 }, { inf, inf, inf } },
+		Cube{ {    0,    0, -inf }, { inf, inf,   0 } },
+		Cube{ {    0, -inf,    0 }, { inf,   0, inf } },
+		Cube{ {    0, -inf, -inf }, { inf,   0,   0 } },
+		Cube{ { -inf,    0,    0 }, {   0, inf, inf } },
+		Cube{ { -inf,    0, -inf }, {   0, inf,   0 } },
+		Cube{ { -inf, -inf,    0 }, {   0,   0, inf } },
+		Cube{ { -inf, -inf, -inf }, {   0,   0,   0 } },
+	};
+
+	for (const Cube& region : octants)
+	{
+		cubes[0].clear();
+		cubes[1].clear();
+
+		size_t activeBuffer = 0;
+		for (const Command& command : commands)
+		{
+			Cube c{ command.Begin, command.End };
+
+			Cube clipped;
+			if (Intersect(c, region, &clipped))
+			{
+				const vector<Cube>& src = cubes[activeBuffer];
+				vector<Cube>& dst = cubes[1 - activeBuffer];
+				dst.clear();
+
+				ShardExisting(clipped, src, &dst);
+				if (command.On)
+				{
+					dst.push_back(clipped);
+				}
+
+				activeBuffer = 1 - activeBuffer;
+			}
+		}
+
+		for (const Cube& c : cubes[activeBuffer])
+		{
+			int64_t volume = 1;
+			volume *= c.End.X - c.Begin.X;
+			volume *= c.End.Y - c.Begin.Y;
+			volume *= c.End.Z - c.Begin.Z;
+			assert(volume > 0);
+			answer += volume;
+		}
+	}
+
 	PuzzleOutput::Submit(2021, 22, 2, answer);
 }
