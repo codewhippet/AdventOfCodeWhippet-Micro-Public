@@ -634,15 +634,11 @@ static int32_t ShortestPathSingleBot(const Puzzle& puzzle)
 	priorityQueue.reserve(2 * 1024);
 	priorityQueue.push_back({ 0, compressedStart });
 
-	MaxValue<size_t> biggestQueue;
-
 	auto enqueue = [&](const CompressedSearchNode_Single& s)
 		{
 			priorityQueue.push_back(s);
 			assert(priorityQueue.size() <= 6 * 1024);
 			ranges::push_heap(priorityQueue);
-
-			biggestQueue.Update(priorityQueue.size());
 		};
 
 	auto dequeue = [&]()
