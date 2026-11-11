@@ -66,30 +66,6 @@ struct std::hash<CompressedState>
 	}
 };
 
-//static char Value(char c)
-//{
-//	return (c == '.') ? 0 : c - 'A' + 1;
-//}
-//
-//UncompressedState DEBUG_Encode(string_view corridor, string_view a, string_view b, string_view c, string_view d)
-//{
-//	UncompressedState state;
-//	for (size_t i = 0; i < corridor.size(); i++)
-//	{
-//		state.Corridor[i] = Value(corridor[i]);
-//	}
-//
-//	for (size_t bunk = 0; bunk < 4; bunk++)
-//	{
-//		state.Bedrooms[0][bunk] = Value(a[bunk]);
-//		state.Bedrooms[1][bunk] = Value(b[bunk]);
-//		state.Bedrooms[2][bunk] = Value(c[bunk]);
-//		state.Bedrooms[3][bunk] = Value(d[bunk]);
-//	}
-//
-//	return state;
-//}
-
 static uint32_t DivModRem(uint32_t data, int8_t* rem)
 {
 	int32_t rem32 = 0;
@@ -336,16 +312,55 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 
 int32_t Heuristic(const UncompressedState& from, const Burrow& burrow)
 {
-	(void)from;
-	(void)burrow;
-	return 0;
+	int32_t minimumCost = 0;
+
+	// Every amphipod in the corridor needs to go to their bedroom
+	for (int32_t slot : burrow.WaitingSlots)
+	{
+		int8_t amphipod = from.Corridor[slot];
+		if (amphipod == 0)
+			continue;
+
+		int32_t amphipodBedroom = amphipod - 1;
+		int32_t cost = ManhattanDistance(burrow.Corridor[slot], burrow.Bedrooms[amphipodBedroom][0]);
+		for (int32_t power = 1; power < amphipod; power++)
+		{
+			cost *= 10;
+		}
+		minimumCost += cost;
+	}
+
+	// Every amphipod in the wrong bedroom needs to go to the right bedroom
+	for (int32_t bedroom = 0; bedroom < NumBedrooms; bedroom++)
+	{
+		for (int32_t bunk = 0; bunk < NumBunks; bunk++)
+		{
+			int8_t amphipod = from.Bedrooms[bedroom][bunk];
+			if (amphipod == 0)
+				continue;
+
+			int32_t amphipodBedroom = amphipod - 1;
+			if (amphipodBedroom == bedroom)
+				continue;
+
+			int32_t cost = ManhattanDistance(burrow.Bedrooms[bedroom][bunk], burrow.Bedrooms[amphipodBedroom][0]) + 2; // +2: into the corridor and out again
+			for (int32_t power = 1; power < amphipod; power++)
+			{
+				cost *= 10;
+			}
+			minimumCost += cost;
+		}
+	}
+
+	return minimumCost;
 }
 
-static int32_t ShortestPath(const UncompressedState& uncompressedStart, const UncompressedState& uncompressedEnd, const Burrow& burrow)
+static int32_t ShortestPath(const UncompressedState& uncompressedStart,
+	const UncompressedState& uncompressedEnd,
+	const Burrow& burrow,
+	const size_t expectedMaxQueueSize,
+	const uint32_t gScoreTableSize)
 {
-	const size_t expectedMaxQueueSize = 12000;
-	const uint32_t gScoreTableSize = 128 * 1024;
-
 	CompressedState compressedStart;
 	CompressState(uncompressedStart, &compressedStart);
 
@@ -462,7 +477,9 @@ void Puzzle23_A_2021()
 		burrow.Bedrooms[3][i] = Vec2Int{ 8, i + 1 };
 	}
 
-	int32_t answer = ShortestPath(start, end, burrow);
+	const size_t expectedMaxQueueSize = 6000;
+	const uint32_t gScoreTableSize = 16 * 1024;
+	int32_t answer = ShortestPath(start, end, burrow, expectedMaxQueueSize, gScoreTableSize);
 
 	PuzzleOutput::Submit(2021, 23, 1, answer);
 }
@@ -522,7 +539,9 @@ void Puzzle23_B_2021()
 		burrow.Bedrooms[3][i] = Vec2Int{ 8, i + 1 };
 	}
 
-	int32_t answer = ShortestPath(start, end, burrow);
+	const size_t expectedMaxQueueSize = 10000;
+	const uint32_t gScoreTableSize = 128 * 1024;
+	int32_t answer = ShortestPath(start, end, burrow, expectedMaxQueueSize, gScoreTableSize);
 
 	PuzzleOutput::Submit(2021, 23, 2, answer);
 }
