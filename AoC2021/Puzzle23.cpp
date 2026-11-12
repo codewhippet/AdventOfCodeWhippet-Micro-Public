@@ -70,7 +70,7 @@ static uint32_t DivModRem(uint32_t data, int8_t* rem)
 {
 	int32_t rem32 = 0;
 	data = Hardware::DivModRem(data, 5, &rem32);
-	*rem = static_cast<char>(rem32);
+	*rem = static_cast<int8_t>(rem32);
 	return data;
 }
 
@@ -130,7 +130,7 @@ static void UncompressState(const CompressedState& src, UncompressedState* dst)
 	}
 }
 
-static int32_t PutToBed(const UncompressedState& current, char amphipod, int32_t corridor, int32_t bedroom, const Burrow& burrow, UncompressedState* next)
+static int32_t PutToBed(const UncompressedState& current, int8_t amphipod, int32_t corridor, int32_t bedroom, const Burrow& burrow, UncompressedState* next)
 {
 	int32_t bunk = 3;
 	while (current.Bedrooms[bedroom][bunk] != 0)
@@ -153,7 +153,30 @@ static int32_t PutToBed(const UncompressedState& current, char amphipod, int32_t
 	return cost;
 }
 
-static int32_t MoveToCorridor(const UncompressedState& current, char amphipod, int32_t bedroom, int32_t bunk, int32_t corridor, const Burrow& burrow, UncompressedState* next)
+static int32_t PutToBedFromBed(const UncompressedState& current, int8_t amphipod, int32_t fromBedroom, int32_t fromBunk, int32_t toBedroom, const Burrow& burrow, UncompressedState* next)
+{
+	int32_t toBunk = 3;
+	while (current.Bedrooms[toBedroom][toBunk] != 0)
+		toBunk--;
+
+	assert(toBunk >= 0);
+	assert(current.Bedrooms[fromBedroom][fromBunk] == amphipod);
+	assert(current.Bedrooms[toBedroom][toBunk] == 0);
+
+	*next = current;
+	next->Bedrooms[fromBedroom][fromBunk] = 0;
+	next->Bedrooms[toBedroom][toBunk] = amphipod;
+
+	int32_t cost = ManhattanDistance(burrow.Bedrooms[fromBedroom][0], burrow.Bedrooms[toBedroom][0]) + fromBunk + toBunk + 2;
+	for (int32_t power = 1; power < amphipod; power++)
+	{
+		cost *= 10;
+	}
+
+	return cost;
+}
+
+static int32_t MoveToCorridor(const UncompressedState& current, int8_t amphipod, int32_t bedroom, int32_t bunk, int32_t corridor, const Burrow& burrow, UncompressedState* next)
 {
 	assert(current.Bedrooms[bedroom][bunk] == amphipod);
 	assert(current.Corridor[corridor] == 0);
@@ -178,6 +201,8 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 	// Check corridor to room paths
 	array<array<bool, NumBedrooms>, NumCorridorSlots> corridorToBedroom;
 	ranges::fill(corridorToBedroom | views::join, true);
+	array<array<bool, NumBedrooms>, NumBedrooms> bedroomToBedroom;
+	ranges::fill(bedroomToBedroom | views::join, true);
 
 	if (current.Corridor[1])
 	{
@@ -208,6 +233,12 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 		corridorToBedroom[9][0] = false;
 
 		corridorToBedroom[10][0] = false;
+
+		for (const pair<int32_t, int32_t>& fromTo : { pair<int32_t, int32_t>{ 0, 1 }, pair<int32_t, int32_t>{ 0, 2 }, pair<int32_t, int32_t>{ 0, 3 } })
+		{
+			bedroomToBedroom[fromTo.first][fromTo.second] = false;
+			bedroomToBedroom[fromTo.second][fromTo.first] = false;
+		}
 	}
 
 	if (current.Corridor[5])
@@ -229,6 +260,12 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 
 		corridorToBedroom[10][0] = false;
 		corridorToBedroom[10][1] = false;
+
+		for (const pair<int32_t, int32_t>& fromTo : { pair<int32_t, int32_t>{ 0, 2 }, pair<int32_t, int32_t>{ 0, 3 }, pair<int32_t, int32_t>{ 1, 2 }, pair<int32_t, int32_t>{ 1, 3 } })
+		{
+			bedroomToBedroom[fromTo.first][fromTo.second] = false;
+			bedroomToBedroom[fromTo.second][fromTo.first] = false;
+		}
 	}
 
 	if (current.Corridor[7])
@@ -248,6 +285,12 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 		corridorToBedroom[10][0] = false;
 		corridorToBedroom[10][1] = false;
 		corridorToBedroom[10][2] = false;
+
+		for (const pair<int32_t, int32_t>& fromTo : { pair<int32_t, int32_t>{ 0, 3 }, pair<int32_t, int32_t>{ 1, 3 }, pair<int32_t, int32_t>{ 2, 3 } })
+		{
+			bedroomToBedroom[fromTo.first][fromTo.second] = false;
+			bedroomToBedroom[fromTo.second][fromTo.first] = false;
+		}
 	}
 
 	if (current.Corridor[9])
@@ -262,13 +305,13 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 	array<bool, NumBedrooms> bedroomOpenForBusiness{};
 	for (int32_t i = 0; i < bedroomOpenForBusiness.size(); i++)
 	{
-		bedroomOpenForBusiness[i] = ranges::all_of(current.Bedrooms[i], [&](char a) { return (a == 0) || (a == (i + 1)); });
+		bedroomOpenForBusiness[i] = ranges::all_of(current.Bedrooms[i], [&](int8_t a) { return (a == 0) || (a == (i + 1)); });
 	}
 
 	// Put someone home if we can
 	for (int32_t slot : burrow.WaitingSlots)
 	{
-		char amphipod = current.Corridor[slot];
+		int8_t amphipod = current.Corridor[slot];
 		if (amphipod == 0)
 			continue;
 
@@ -286,19 +329,31 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 	{
 		for (int32_t bunk = 0; bunk < NumBunks; bunk++)
 		{
-			char amphipod = current.Bedrooms[bedroom][bunk];
+			int8_t amphipod = current.Bedrooms[bedroom][bunk];
 			if (amphipod == 0)
 				continue;
 
 			if (bedroomOpenForBusiness[bedroom] == false)
 			{
-				for (int32_t slot : burrow.WaitingSlots)
+				// Can we put an amphipod straight to bed?
+				int32_t amphipodBedroom = amphipod - 1;
+				if ((amphipodBedroom != bedroom) && (bedroomOpenForBusiness[amphipodBedroom]) && (bedroomToBedroom[bedroom][amphipodBedroom]))
 				{
-					if ((current.Corridor[slot] == 0) && (corridorToBedroom[slot][bedroom]))
+					Neighbour next;
+					next.Distance = PutToBedFromBed(current, amphipod, bedroom, bunk, amphipodBedroom, burrow, &next.State);
+					neighbours.push_back(next);
+				}
+				else
+				{
+					// No, we have to shuffle them into the corridor
+					for (int32_t slot : burrow.WaitingSlots)
 					{
-						Neighbour next;
-						next.Distance = MoveToCorridor(current, amphipod, bedroom, bunk, slot, burrow, &next.State);
-						neighbours.push_back(next);
+						if ((current.Corridor[slot] == 0) && (corridorToBedroom[slot][bedroom]))
+						{
+							Neighbour next;
+							next.Distance = MoveToCorridor(current, amphipod, bedroom, bunk, slot, burrow, &next.State);
+							neighbours.push_back(next);
+						}
 					}
 				}
 			}
@@ -477,7 +532,7 @@ void Puzzle23_A_2021()
 		burrow.Bedrooms[3][i] = Vec2Int{ 8, i + 1 };
 	}
 
-	const size_t expectedMaxQueueSize = 6000;
+	const size_t expectedMaxQueueSize = 8000;
 	const uint32_t gScoreTableSize = 16 * 1024;
 	int32_t answer = ShortestPath(start, end, burrow, expectedMaxQueueSize, gScoreTableSize);
 
