@@ -194,9 +194,9 @@ static int32_t MoveToCorridor(const UncompressedState& current, int8_t amphipod,
 	return cost;
 }
 
-static vector<Neighbour> GetNeighbours(const UncompressedState& current, const Burrow& burrow)
+static void GetNeighbours(const UncompressedState& current, const Burrow& burrow, vector<Neighbour>* neighbours)
 {
-	vector<Neighbour> neighbours;
+	neighbours->clear();
 
 	// Check corridor to room paths
 	array<array<bool, NumBedrooms>, NumCorridorSlots> corridorToBedroom;
@@ -320,7 +320,7 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 		{
 			Neighbour next;
 			next.Distance = PutToBed(current, amphipod, slot, amphipodBedroom, burrow, &next.State);
-			neighbours.push_back(next);
+			neighbours->push_back(next);
 		}
 	}
 
@@ -341,7 +341,7 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 				{
 					Neighbour next;
 					next.Distance = PutToBedFromBed(current, amphipod, bedroom, bunk, amphipodBedroom, burrow, &next.State);
-					neighbours.push_back(next);
+					neighbours->push_back(next);
 				}
 				else
 				{
@@ -352,7 +352,7 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 						{
 							Neighbour next;
 							next.Distance = MoveToCorridor(current, amphipod, bedroom, bunk, slot, burrow, &next.State);
-							neighbours.push_back(next);
+							neighbours->push_back(next);
 						}
 					}
 				}
@@ -361,8 +361,6 @@ static vector<Neighbour> GetNeighbours(const UncompressedState& current, const B
 			break;
 		}
 	}
-
-	return neighbours;
 }
 
 int32_t Heuristic(const UncompressedState& from, const Burrow& burrow)
@@ -445,6 +443,10 @@ static int32_t ShortestPath(const UncompressedState& uncompressedStart,
 	HashMap<CompressedState, int32_t> gScore(gScoreTableSize, { 0 });
 	gScore.Set(compressedStart, 0);
 
+	const size_t maxNeighbours = 64;
+	vector<Neighbour> neighbours;
+	neighbours.reserve(maxNeighbours);
+
 	UncompressedState uncompressedState;
 	while (priorityQueue.empty() == false)
 	{
@@ -455,7 +457,8 @@ static int32_t ShortestPath(const UncompressedState& uncompressedStart,
 			return -current.Priority;
 		}
 
-		vector<Neighbour> neighbours = GetNeighbours(uncompressedState, burrow);
+		GetNeighbours(uncompressedState, burrow, &neighbours);
+		assert(neighbours.capacity() == maxNeighbours);
 		for (const Neighbour& neighbour : neighbours)
 		{
 			CompressedState compressedNeighbour;
