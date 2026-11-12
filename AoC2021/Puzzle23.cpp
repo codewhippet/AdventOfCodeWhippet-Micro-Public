@@ -46,6 +46,127 @@ namespace Puzzle23_2021_Types
 		int32_t Distance;
 		UncompressedState State;
 	};
+
+	template <typename KEY_TYPE, typename MAPPED_TYPE>
+	class HashMapPsram
+	{
+	public:
+		using key_type = KEY_TYPE;
+		using mapped_type = MAPPED_TYPE;
+		using value_type = std::pair<KEY_TYPE, MAPPED_TYPE>;
+		using size_type = uint32_t;
+
+		HashMapPsram(uint32_t size, const key_type& invalidKeyValue)
+			: Table(static_cast<value_type*>(Hardware::PsramBase()), size)
+			, TableSizeMask(size - 1)
+			, MapSize(0)
+			, InvalidKeyValue(invalidKeyValue)
+		{
+			ranges::fill(Table, value_type{ invalidKeyValue, {} });
+
+			// Tables must be a power of two
+			assert(std::popcount(size) == 1);
+			assert(size <= Hardware::PsramSize());
+		}
+
+		HashMapPsram(HashMapPsram&&) = default;
+		HashMapPsram& operator=(HashMapPsram&&) = default;
+
+		HashMapPsram(const HashMapPsram&) = delete;
+		HashMapPsram& operator=(const HashMapPsram&) = delete;
+
+		bool Set(const key_type& key, const mapped_type& value)
+		{
+			uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+			const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+			for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+			{
+				const uint32_t tableIndex = hashIndex & TableSizeMask;
+				if (Table[tableIndex].first == key)
+				{
+					Table[tableIndex].second = value;
+					return true;
+				}
+
+				if (Table[tableIndex].first == InvalidKeyValue)
+				{
+					Table[tableIndex] = { key, value };
+					MapSize++;
+					return true;
+				}
+			}
+
+			assert(false);
+			return false;
+		}
+
+		mapped_type FindOrDefault(const key_type& key, const mapped_type& def) const
+		{
+			uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+			const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+			for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+			{
+				const uint32_t tableIndex = hashIndex & TableSizeMask;
+				if (Table[tableIndex].first == key)
+				{
+					return Table[tableIndex].second;
+				}
+
+				if (Table[tableIndex].first == InvalidKeyValue)
+				{
+					return def;
+				}
+			}
+
+			return def;
+		}
+
+		const mapped_type& At(const key_type& key) const
+		{
+			uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+			const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+			for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+			{
+				const uint32_t tableIndex = hashIndex & TableSizeMask;
+				if (Table[tableIndex].first == key)
+				{
+					return Table[tableIndex].second;
+				}
+			}
+
+			assert(false);
+			return *reinterpret_cast<mapped_type*>(0);
+		}
+
+		mapped_type& At(const key_type& key)
+		{
+			uint32_t hashIndex = static_cast<uint32_t>(std::hash<key_type>{}(key));
+			const uint32_t tableSize = static_cast<uint32_t>(Table.size());
+			for (uint32_t i = 0; i < tableSize; i++, hashIndex++)
+			{
+				const uint32_t tableIndex = hashIndex & TableSizeMask;
+				if (Table[tableIndex].first == key)
+				{
+					return Table[tableIndex].second;
+				}
+			}
+
+			assert(false);
+			return *reinterpret_cast<mapped_type*>(0);
+		}
+
+		size_type Size() const
+		{
+			return MapSize;
+		}
+
+	private:
+
+		std::span<value_type> Table;
+		uint32_t TableSizeMask;
+		uint32_t MapSize;
+		key_type InvalidKeyValue;
+	};
 }
 
 using namespace Puzzle23_2021_Types;
@@ -440,7 +561,7 @@ static int32_t ShortestPath(const UncompressedState& uncompressedStart,
 			return s;
 		};
 
-	HashMap<CompressedState, int32_t> gScore(gScoreTableSize, { 0 });
+	HashMapPsram<CompressedState, int32_t> gScore(gScoreTableSize, { 0 });
 	gScore.Set(compressedStart, 0);
 
 	const size_t maxNeighbours = 64;
@@ -479,6 +600,13 @@ static int32_t ShortestPath(const UncompressedState& uncompressedStart,
 
 void Puzzle23_A_2021()
 {
+	const size_t psramNeeded = 12 * 16 * 1024;
+	if (Hardware::PsramSize() < psramNeeded)
+	{
+		PuzzleOutput::Unsupported(2021, 23, 1);
+		return;
+	}
+
 	UncompressedState end;
 	memset(end.Corridor, 0, sizeof(end.Corridor));
 
@@ -544,6 +672,13 @@ void Puzzle23_A_2021()
 
 void Puzzle23_B_2021()
 {
+	const size_t psramNeeded = 12 * 128 * 1024;
+	if (Hardware::PsramSize() < psramNeeded)
+	{
+		PuzzleOutput::Unsupported(2021, 23, 2);
+		return;
+	}
+
 	UncompressedState end;
 	memset(end.Corridor, 0, sizeof(end.Corridor));
 
