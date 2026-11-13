@@ -2,124 +2,105 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle25_2021_Types
 {
 }
 
 using namespace Puzzle25_2021_Types;
 
-static int StepEast(const vector<string>& oldState, vector<string>* newState)
+static int32_t StepEast(const uArrayMap2D& oldState, uArrayMap2D* newState)
 {
-	vector<string> state;
-	state.reserve(oldState.size());
-	for (size_t y = 0; y < oldState.size(); y++)
-	{
-		state.push_back(string(oldState[y].size(), '.'));
-	}
+	ranges::fill(newState->GetData(), '.');
 
-	int moves = 0;
-	for (size_t y = 0; y < oldState.size(); y++)
+	int32_t moves = 0;
+	for (int32_t y = 0; y < oldState.GetHeight(); y++)
 	{
-		for (size_t x = 0; x < oldState[y].size(); x++)
+		for (int32_t x = 0; x < oldState.GetWidth(); x++)
 		{
-			if (oldState[y][x] == '>')
+			if (oldState(x, y) == '>')
 			{
-				size_t newX = (x + 1) % oldState[y].size();
-				if (oldState[y][newX] == '.')
+				int32_t newX = (x + 1) % oldState.GetWidth();
+				if (oldState(newX, y) == '.')
 				{
-					state[y][newX] = '>';
+					(*newState)(newX, y) = '>';
 					moves++;
 				}
 				else
 				{
-					state[y][x] = '>';
+					(*newState)(x, y) = '>';
 				}
 			}
-			else if (oldState[y][x] == 'v')
+			else if (oldState(x, y) == 'v')
 			{
-				state[y][x] = 'v';
+				(*newState)(x, y) = 'v';
 			}
 		}
 	}
 
-	*newState = move(state);
 	return moves;
 }
 
-static int StepSouth(const vector<string>& oldState, vector<string>* newState)
+static int32_t StepSouth(const uArrayMap2D& oldState, uArrayMap2D* newState)
 {
-	vector<string> state;
-	state.reserve(oldState.size());
-	for (size_t y = 0; y < oldState.size(); y++)
-	{
-		state.push_back(string(oldState[y].size(), '.'));
-	}
+	ranges::fill(newState->GetData(), '.');
 
-	int moves = 0;
-	for (size_t x = 0; x < oldState[0].size(); x++)
+	int32_t moves = 0;
+	for (int32_t x = 0; x < oldState.GetWidth(); x++)
 	{
-		for (size_t y = 0; y < oldState.size(); y++)
+		for (int32_t y = 0; y < oldState.GetHeight(); y++)
 		{
-			if (oldState[y][x] == 'v')
+			if (oldState(x, y) == 'v')
 			{
-				size_t newY = (y + 1) % oldState.size();
-				if (oldState[newY][x] == '.')
+				int32_t newY = (y + 1) % oldState.GetHeight();
+				if (oldState(x, newY) == '.')
 				{
-					state[newY][x] = 'v';
+					(*newState)(x, newY) = 'v';
 					moves++;
 				}
 				else
 				{
-					state[y][x] = 'v';
+					(*newState)(x, y) = 'v';
 				}
 			}
-			else if (oldState[y][x] == '>')
+			else if (oldState(x, y) == '>')
 			{
-				state[y][x] = '>';
+				(*newState)(x, y) = '>';
 			}
 		}
 	}
 
-	*newState = move(state);
 	return moves;
-}
-
-static void Puzzle25_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> state = ReadAllLines(input);
-
-	int steps = 1;
-	while (true)
-	{
-		vector<string> midState;
-		vector<string> endState;
-		if ((StepEast(state, &midState) + StepSouth(midState, &endState)) == 0)
-		{
-			break;
-		}
-
-		state = move(endState);
-		steps++;
-	}
-
-	int64_t answer = steps;
-
-	printf("[2021] Puzzle25_A: %" PRId64 "\n", answer);
 }
 
 void Puzzle25_A_2021()
 {
-	Puzzle25_A(R"(z:\AoCInput\2021\Puzzle25.txt)");
+	MemArenaConfig cfg;
+	cfg.LargeBlockRegionSize = 40 * 1024;
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2021, 25, 1, answer);
+	MemArena_Configure(cfg);
+	{
+		uArrayMap2D buffer0 = ReaduArrayMap();
+		uArrayMap2D buffer1(uArrayMap2DOptions::CloneAsUninitialised, buffer0);
+		array<uArrayMap2D*, 2> buffers{ &buffer0, &buffer1 };
+
+		int32_t steps = 1;
+		while (true)
+		{
+			int32_t moved = 0;
+			moved += StepEast(*buffers[0], buffers[1]);
+			moved += StepSouth(*buffers[1], buffers[0]);
+			if (moved == 0)
+			{
+				break;
+			}
+
+			steps++;
+		}
+
+		int32_t answer = steps;
+		PuzzleOutput::Submit(2021, 25, 1, answer);
+	}
+	MemArena_Reset();
 }
 
 void Puzzle25_B_2021()
