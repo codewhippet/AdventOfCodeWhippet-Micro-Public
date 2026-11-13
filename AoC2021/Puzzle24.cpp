@@ -2,62 +2,54 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle24_2021_Types
 {
 	struct Stage
 	{
-		int64_t Divisor;
-		int64_t TestOffset;
-		int64_t Increment;
+		int32_t Divisor;
+		int32_t TestOffset;
+		int32_t Increment;
 	};
 }
 
 using namespace Puzzle24_2021_Types;
 
-static vector<Stage> ExtractStages(istream& input)
+static vector<Stage> ExtractStages()
 {
 	const size_t numStages = 14;
-	const int64_t linesPerStage = 18;
+	const int32_t linesPerStage = 18;
 
 	vector<Stage> stages(numStages);
-	for (const auto &line : ReadEachLineWithNumber(input))
+	for (size_t stage = 0; stage < numStages; stage++)
 	{
-		int64_t stage = line.second / linesPerStage;
-		switch (line.second % linesPerStage)
+		for (int32_t line = 0; line < linesPerStage; line++)
 		{
-		case 4:
+			PuzzleInput::NextLine();
+			switch (line)
 			{
-				int scanned = sscanf(line.first.c_str(), "div z %lld", &stages[stage].Divisor);
-				assert(scanned == 1);
-				(void)scanned;
+			case 4:
+				stages[stage].Divisor = Parse::GetInt32();
+				break;
+			case 5:
+				stages[stage].TestOffset = Parse::GetInt32();
+				break;
+			case 15:
+				stages[stage].Increment = Parse::GetInt32();
+				break;
+			default:
+				PuzzleInput::DropLine();
+				break;
 			}
-			break;
-		case 5:
-			{
-				int scanned = sscanf(line.first.c_str(), "add x %lld", &stages[stage].TestOffset);
-				assert(scanned == 1);
-				(void)scanned;
-			}
-			break;
-		case 15:
-			{
-				int scanned = sscanf(line.first.c_str(), "add y %lld", &stages[stage].Increment);
-				assert(scanned == 1);
-				(void)scanned;
-			}
-			break;
 		}
 	}
+
 	return stages;
 }
 
-static int64_t ExecuteStage(const Stage& s, int64_t input, int64_t z)
+static int32_t ExecuteStage(const Stage& s, int32_t input, int32_t z)
 {
-	int64_t w = input;
-	int64_t x = z % 26;
+	int32_t w = input;
+	int32_t x = z % 26;
 	z = z / s.Divisor;
 
 	bool mismatch = w != (x + s.TestOffset);
@@ -69,113 +61,114 @@ static int64_t ExecuteStage(const Stage& s, int64_t input, int64_t z)
 	return z;
 }
 
-static bool IsPossibleToFindValid(const vector<Stage>& stages, const vector<int64_t>& fixedInputs)
+static pair<int32_t, int32_t> LargestPair(const Stage& stageA, const Stage& stageB)
 {
-	map<int, set<int64_t>> stageOutputs;
-
-	// Z always starts off as 0
-	stageOutputs[-1].insert(0);
-
-	// For all input slots
-	for (int i = 0; i < 14; i++)
+	for (int32_t i = 9; i > 0; i--)
 	{
-		set<int64_t>& currentStage = stageOutputs[i];
-		set<int64_t>& previousStage = stageOutputs[i - 1];
-
-		// For all possible values of Z
-		for (int64_t prevZ : previousStage)
+		for (int32_t j = 9; j > 0; j--)
 		{
-			int64_t inputMin = 1;
-			int64_t inputMax = 10;
+			int32_t z0 = 0;
+			int32_t z1 = ExecuteStage(stageA, i, z0);
+			int32_t z2 = ExecuteStage(stageB, j, z1);
 
-			// Fixed input
-			if (i < fixedInputs.size())
+			if (z2 == 0)
 			{
-				inputMin = fixedInputs[i];
-				inputMax = inputMin + 1;
-			}
-
-			// For all possible inputs into this stage
-			for (int64_t input = inputMin; input < inputMax; input++)
-			{
-				int64_t newZ = ExecuteStage(stages[i], input, prevZ);
-				currentStage.insert(newZ);
+				return { i, j };
 			}
 		}
 	}
-	return stageOutputs[13].find(0) != stageOutputs[13].end();
+
+	return { -1, -1 };
 }
 
-static void Puzzle24_A(const string& filename)
+static pair<int32_t, int32_t> SmallestPair(const Stage& stageA, const Stage& stageB)
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<Stage> stages = ExtractStages(input);
-
-	vector<int64_t> fixedInputs;
-	while (fixedInputs.size() < 14)
+	for (int32_t i = 1; i < 10; i++)
 	{
-		for (int64_t i = 9; i > 0; i--)
+		for (int32_t j = 1; j < 10; j++)
 		{
-			fixedInputs.push_back(i);
+			int32_t z0 = 0;
+			int32_t z1 = ExecuteStage(stageA, i, z0);
+			int32_t z2 = ExecuteStage(stageB, j, z1);
 
-			bool possible = IsPossibleToFindValid(stages, fixedInputs);
-			if (possible)
+			if (z2 == 0)
 			{
-				break;
+				return { i, j };
 			}
-			fixedInputs.pop_back();
 		}
 	}
 
-	int64_t answer = accumulate(fixedInputs.begin(), fixedInputs.end(), 0ll, [](int64_t a, int64_t b) { return (a * 10) + b; });
-
-	printf("[2021] Puzzle24_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle24_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<Stage> stages = ExtractStages(input);
-
-	vector<int64_t> fixedInputs;
-	while (fixedInputs.size() < 14)
-	{
-		for (int64_t i = 1; i < 10; i++)
-		{
-			fixedInputs.push_back(i);
-
-			bool possible = IsPossibleToFindValid(stages, fixedInputs);
-			if (possible)
-			{
-				break;
-			}
-			fixedInputs.pop_back();
-		}
-	}
-
-	int64_t answer = accumulate(fixedInputs.begin(), fixedInputs.end(), 0ll, [](int64_t a, int64_t b) { return (a * 10) + b; });
-
-	printf("[2021] Puzzle24_B: %" PRId64 "\n", answer);
+	return { -1, -1 };
 }
 
 void Puzzle24_A_2021()
 {
-	Puzzle24_A(R"(z:\AoCInput\2021\Puzzle24.txt)");
+	vector<Stage> stages = ExtractStages();
 
-	int32_t answer = 0;
+	const size_t numStagePairs = stages.size() / 2;
+	vector<size_t> stack;
+	stack.reserve(numStagePairs);
+
+	vector<int32_t> digits(stages.size());
+	for (size_t i = 0; i < stages.size(); i++)
+	{
+		if (stages[i].Divisor == 1)
+		{
+			stack.push_back(i);
+		}
+		else
+		{
+			size_t j = stack.back();
+			stack.pop_back();
+
+			pair<int32_t, int32_t> smallestDigits = LargestPair(stages[j], stages[i]);
+			digits[j] = smallestDigits.first;
+			digits[i] = smallestDigits.second;
+		}
+	}
+	assert(stack.empty());
+
+	int64_t answer = 0;
+	for (int32_t digit : digits)
+	{
+		answer = answer * 10 + digit;
+	}
+
 	PuzzleOutput::Submit(2021, 24, 1, answer);
 }
 
 void Puzzle24_B_2021()
 {
-	Puzzle24_B(R"(z:\AoCInput\2021\Puzzle24.txt)");
+	vector<Stage> stages = ExtractStages();
 
-	int32_t answer = 0;
+	const size_t numStagePairs = stages.size() / 2;
+	vector<size_t> stack;
+	stack.reserve(numStagePairs);
+
+	vector<int32_t> digits(stages.size());
+	for (size_t i = 0; i < stages.size(); i++)
+	{
+		if (stages[i].Divisor == 1)
+		{
+			stack.push_back(i);
+		}
+		else
+		{
+			size_t j = stack.back();
+			stack.pop_back();
+
+			pair<int32_t, int32_t> smallestDigits = SmallestPair(stages[j], stages[i]);
+			digits[j] = smallestDigits.first;
+			digits[i] = smallestDigits.second;
+		}
+	}
+	assert(stack.empty());
+
+	int64_t answer = 0;
+	for (int32_t digit : digits)
+	{
+		answer = answer * 10 + digit;
+	}
+
 	PuzzleOutput::Submit(2021, 24, 2, answer);
 }
