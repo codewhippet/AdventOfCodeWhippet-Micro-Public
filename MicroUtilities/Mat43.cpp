@@ -1,5 +1,3 @@
-#pragma once
-
 #include "Mat43.h"
 
 template <typename COORDINATE_TYPE>
@@ -77,7 +75,7 @@ namespace Matrix
 	template <typename COORDINATE_TYPE>
 	Mat43<COORDINATE_TYPE> MakeIdentity()
 	{
-		return Mat43{
+		return Mat43<COORDINATE_TYPE>{
 			1, 0, 0,
 			0, 1, 0,
 			0, 0, 1,
@@ -88,7 +86,7 @@ namespace Matrix
 	template <typename COORDINATE_TYPE>
 	Mat43<COORDINATE_TYPE> MakeRotation(const Vec3<COORDINATE_TYPE>& i, const Vec3<COORDINATE_TYPE>& j, const Vec3<COORDINATE_TYPE>& k)
 	{
-		return Mat43{
+		return Mat43<COORDINATE_TYPE>{
 		i.X, i.Y, i.Z,
 		j.X, j.Y, j.Z,
 		k.X, k.Y, k.Z,
@@ -99,7 +97,7 @@ namespace Matrix
 	template <typename COORDINATE_TYPE>
 	Mat43<COORDINATE_TYPE> MakeTranslation(const Vec3<COORDINATE_TYPE>& t)
 	{
-		return Mat43{
+		return Mat43<COORDINATE_TYPE>{
 			1, 0, 0,
 			0, 1, 0,
 			0, 0, 1,

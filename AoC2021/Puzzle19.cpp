@@ -76,7 +76,7 @@ static vector<Mat43Int> CreateRotations()
 {
 	vector<Mat43Int> rotations;
 
-	const Vec3Int basisVectors[6] =
+	const array<Vec3Int, 6> basisVectors =
 	{
 		Vec3Int{  1,  0,  0 },
 		Vec3Int{  0,  1,  0 },
@@ -87,9 +87,9 @@ static vector<Mat43Int> CreateRotations()
 		Vec3Int{  0,  0, -1 },
 	};
 
-	for (int32_t i = 0; i < _countof(basisVectors); i++)
+	for (int32_t i = 0; i < static_cast<int32_t>(basisVectors.size()); i++)
 	{
-		for (int32_t j = 0; j < _countof(basisVectors); j++)
+		for (int32_t j = 0; j < static_cast<int32_t>(basisVectors.size()); j++)
 		{
 			// Ignore same and parallel basis vectors
 			if ((i == j) || (abs(i - j) == 3))
