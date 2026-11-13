@@ -121,9 +121,9 @@ void Puzzle24_A_2021()
 			size_t j = stack.back();
 			stack.pop_back();
 
-			pair<int32_t, int32_t> smallestDigits = LargestPair(stages[j], stages[i]);
-			digits[j] = smallestDigits.first;
-			digits[i] = smallestDigits.second;
+			pair<int32_t, int32_t> largestDigits = LargestPair(stages[j], stages[i]);
+			digits[j] = largestDigits.first;
+			digits[i] = largestDigits.second;
 		}
 	}
 	assert(stack.empty());
