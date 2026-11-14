@@ -15,12 +15,13 @@ This is a version of my [solution repo](https://github.com/codewhippet/AdventOfC
 * **2017 - Complete, optimised**
 * **2018 - Complete, optimised**
 * 2019 - Complete, not yet optimised
-* 2020 - Not started
-* 2021 - Not started
-* 2022 - Not started
+* 2020 - Complete, not yet optimised
+* 2021 - Complete, not yet optimised
+* 2022 - In progress
 * 2023 - Not started
 * 2024 - Not started
 * 2025 - Not started
+* 2026 - Placeholder
 
 ## Licenses
 
