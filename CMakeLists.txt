@@ -61,6 +61,7 @@ add_subdirectory(AoC2018)
 add_subdirectory(AoC2019)
 add_subdirectory(AoC2020)
 add_subdirectory(AoC2021)
+add_subdirectory(AoC2022)
 add_subdirectory(AoC2026)
 
 target_link_libraries(AdventOfCodeWhippet PRIVATE MicroUtilities)
@@ -72,6 +73,7 @@ target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2018)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2019)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2020)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2021)
+target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2022)
 target_link_libraries(AdventOfCodeWhippet PRIVATE AoC2026)
 
 #

@@ -5,6 +5,7 @@
 #include "AoC2019/AoC2019.h"
 #include "AoC2020/AoC2020.h"
 #include "AoC2021/AoC2021.h"
+#include "AoC2022/AoC2022.h"
 #include "AoC2026/AoC2026.h"
 #include <MicroUtils.h>
 #include <string>
@@ -48,6 +49,7 @@ static const Puzzles PuzzleTables[] =
 	{ 2019, &PuzzleTableCount_2019, PuzzleTable_2019 },
 	{ 2020, &PuzzleTableCount_2020, PuzzleTable_2020 },
 	{ 2021, &PuzzleTableCount_2021, PuzzleTable_2021 },
+	{ 2022, &PuzzleTableCount_2022, PuzzleTable_2022 },
 	{ 2026, &PuzzleTableCount_2026, PuzzleTable_2026 },
 };
 

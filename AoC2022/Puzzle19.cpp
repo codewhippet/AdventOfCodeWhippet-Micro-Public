@@ -295,9 +295,15 @@ static void Puzzle19_B(const string& filename)
 void Puzzle19_A_2022()
 {
 	Puzzle19_A(R"(z:\AoCInput\2022\Puzzle19.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2022, 19, 1, answer);
 }
 
 void Puzzle19_B_2022()
 {
 	Puzzle19_B(R"(z:\AoCInput\2022\Puzzle19.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2022, 19, 2, answer);
 }

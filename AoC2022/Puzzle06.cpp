@@ -50,9 +50,15 @@ static void Puzzle06_B(const string& filename)
 void Puzzle06_A_2022()
 {
 	Puzzle06_A(R"(z:\AoCInput\2022\Puzzle06.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2022, 6, 1, answer);
 }
 
 void Puzzle06_B_2022()
 {
 	Puzzle06_B(R"(z:\AoCInput\2022\Puzzle06.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2022, 6, 2, answer);
 }

@@ -53,8 +53,8 @@ static void Puzzle12_A(const string& filename)
 	//istringstream input(dummy);
 
 	ArrayMap2D heights = ReadArrayMap(input);
-	Point2 start = (heights.Grid() | views::filter([](const auto &p) { return p.second == 'S'; }) | ranges::to<vector>()).front().first;
-	Point2 end = (heights.Grid() | views::filter([](const auto &p) { return p.second == 'E'; }) | ranges::to<vector>()).front().first;
+	Point2 start = (heights.Grid() | views::filter([](const auto &p) { return p.second == 'S'; })).front().first;
+	Point2 end = (heights.Grid() | views::filter([](const auto &p) { return p.second == 'E'; })).front().first;
 
 	heights(start) = 'a';
 
@@ -84,9 +84,15 @@ static void Puzzle12_B(const string& filename)
 void Puzzle12_A_2022()
 {
 	Puzzle12_A(R"(z:\AoCInput\2022\Puzzle12.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2022, 12, 1, answer);
 }
 
 void Puzzle12_B_2022()
 {
 	Puzzle12_B(R"(z:\AoCInput\2022\Puzzle12.txt)");
+
+	int32_t answer = 0;
+	PuzzleOutput::Submit(2022, 12, 2, answer);
 }

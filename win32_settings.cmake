@@ -1,3 +1,5 @@
+target_compile_features(win32_settings INTERFACE cxx_std_23)
+
 target_compile_definitions(win32_settings INTERFACE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(win32_settings INTERFACE NOMINMAX)
 target_compile_definitions(win32_settings INTERFACE _CRT_SECURE_NO_WARNINGS)
