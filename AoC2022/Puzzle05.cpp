@@ -2,26 +2,29 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle05_2022_Types
 {
 }
 
 using namespace Puzzle05_2022_Types;
 
-static vector<string> ReadStacks(const vector<string>& lines)
+static vector<string> ReadStacks()
 {
-	vector<string> stacks(9ull);
-	for (const string& line : lines)
+	const size_t numStacks = 9;
+	const size_t stackSpacing = 4;
+
+	vector<string> stacks(numStacks);
+
+	array<char, 48> line;
+	while (PuzzleInput::NextLine())
 	{
-		if (line.size() < 2 || line[1] == '1')
+		int32_t len = Parse::ReadLine(line.data(), line.size());
+		if (len < 2 || line[1] == '1')
 			break;
 
-		for (size_t i = 0; i < 9; i++)
+		for (size_t i = 0; i < numStacks; i++)
 		{
-			stacks[i] += line[(i * 4) + 1];
+			stacks[i] += line[(i * stackSpacing) + 1];
 		}
 	}
 
@@ -29,36 +32,26 @@ static vector<string> ReadStacks(const vector<string>& lines)
 		[](string& stack)
 		{
 			ranges::reverse(stack);
-			stack = Trim(stack);
+			stack.erase(ranges::find(stack, ' '), stack.end());
 		});
 
 	return stacks;
 }
 
-static void Puzzle05_A(const string& filename)
+void Puzzle05_A_2022()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<string> stacks = ReadStacks();
 
-	vector<string> lines = ReadAllLines(input);
-	vector<string> stacks = ReadStacks(lines);
-
-	const regex movePattern{ R"(move (\d+) from (\d+) to (\d+))" };
-	for (const string& line : lines)
+	while (PuzzleInput::NextLine())
 	{
-		smatch m;
-		if (!regex_match(line, m, movePattern))
-			continue;
+		int32_t moveN = Parse::GetInt32();
+		int32_t from = Parse::GetInt32() - 1;
+		int32_t to = Parse::GetInt32() - 1;
 
-		int64_t moveN = atoll(m[1].str().c_str());
-		int64_t from = atoll(m[2].str().c_str()) - 1;
-		int64_t to = atoll(m[3].str().c_str()) - 1;
-
-		for (int64_t i = 0; i < moveN; i++)
+		for (int32_t i = 0; i < moveN; i++)
 		{
 			char c = stacks[from].back();
-			stacks[from] = stacks[from].substr(0, stacks[from].size() - 1);
+			stacks[from].resize(stacks[from].size() - 1);
 			stacks[to] += c;
 		}
 	}
@@ -66,53 +59,26 @@ static void Puzzle05_A(const string& filename)
 	string answer;
 	ranges::copy(stacks | views::transform([](const auto &stack) { return stack.back(); }), back_inserter(answer));
 
-	printf("[2022] Puzzle05_A: %s\n", answer.c_str());
+	PuzzleOutput::Submit(2022, 5, 1, answer.c_str());
 }
 
-static void Puzzle05_B(const string& filename)
+void Puzzle05_B_2022()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<string> stacks = ReadStacks();
 
-	vector<string> lines = ReadAllLines(input);
-	vector<string> stacks = ReadStacks(lines);
-
-	const regex movePattern{ R"(move (\d+) from (\d+) to (\d+))" };
-	for (const string& line : lines)
+	while (PuzzleInput::NextLine())
 	{
-		smatch m;
-		if (!regex_match(line, m, movePattern))
-			continue;
-
-		int64_t moveN = atoll(m[1].str().c_str());
-		int64_t from = atoll(m[2].str().c_str()) - 1;
-		int64_t to = atoll(m[3].str().c_str()) - 1;
+		int32_t moveN = Parse::GetInt32();
+		int32_t from = Parse::GetInt32() - 1;
+		int32_t to = Parse::GetInt32() - 1;
 
 		size_t fromSize = stacks[from].size();
-		string cratesToMove = stacks[from].substr(fromSize - moveN);
-		stacks[from] = stacks[from].substr(0, fromSize - moveN);
-		stacks[to] += cratesToMove;
+		stacks[to] += &stacks[from][fromSize - moveN];
+		stacks[from].resize(fromSize - moveN);
 	}
 
 	string answer;
 	ranges::copy(stacks | views::transform([](const auto &stack) { return stack.back(); }), back_inserter(answer));
 
-	printf("[2022] Puzzle05_B: %s\n", answer.c_str());
-}
-
-void Puzzle05_A_2022()
-{
-	Puzzle05_A(R"(z:\AoCInput\2022\Puzzle05.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2022, 5, 1, answer);
-}
-
-void Puzzle05_B_2022()
-{
-	Puzzle05_B(R"(z:\AoCInput\2022\Puzzle05.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2022, 5, 2, answer);
+	PuzzleOutput::Submit(2022, 5, 2, answer.c_str());
 }
