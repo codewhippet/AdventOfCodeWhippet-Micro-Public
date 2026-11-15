@@ -2,86 +2,63 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle01_2022_Types
 {
 }
 
 using namespace Puzzle01_2022_Types;
 
-static void Puzzle01_A(const string& filename)
+void Puzzle01_A_2022()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	int32_t answer = 0;
 
-	int64_t answer = 0;
-
-	int64_t runningTotal = 0;
-	for (const string& line : ReadEachLine(input))
+	int32_t runningTotal = 0;
+	while (PuzzleInput::PeekChar() != EOF)
 	{
-		if (line.empty())
+		if (PuzzleInput::IsEmptyLine())
 		{
 			answer = max(runningTotal, answer);
 			runningTotal = 0;
 		}
 		else
 		{
-			runningTotal += atoll(line.c_str());
+			runningTotal += Parse::GetInt32();
 		}
+
+		Parse::DiscardExpected("\n");
 	}
 
 	answer = max(runningTotal, answer);
 
-	printf("[2022] Puzzle01_A: %" PRId64 "\n", answer);
+	PuzzleOutput::Submit(2022, 1, 1, answer);
 }
 
-static void Puzzle01_B(const string& filename)
+void Puzzle01_B_2022()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	const size_t expectedNumElves = 256;
+	vector<int32_t> elfTotals;
+	elfTotals.reserve(expectedNumElves);
 
-	vector<int64_t> elfTotals;
-
-	int64_t runningTotal = 0;
-	for (const string& line : ReadEachLine(input))
+	int32_t runningTotal = 0;
+	while (PuzzleInput::PeekChar() != EOF)
 	{
-		if (line.empty())
+		if (PuzzleInput::IsEmptyLine())
 		{
 			elfTotals.push_back(runningTotal);
 			runningTotal = 0;
 		}
 		else
 		{
-			runningTotal += atoll(line.c_str());
+			runningTotal += Parse::GetInt32();
 		}
+
+		Parse::DiscardExpected("\n");
 	}
 
 	elfTotals.push_back(runningTotal);
 	ranges::sort(elfTotals);
-	ranges::reverse(elfTotals);
 
-	auto topThree = elfTotals | views::take(3);
-	int64_t answer = accumulate(topThree.begin(), topThree.end(), 0ll);
+	int32_t answer = accumulate(elfTotals.end() - 3, elfTotals.end(), 0);
 
-	printf("[2022] Puzzle01_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle01_A_2022()
-{
-	Puzzle01_A(R"(z:\AoCInput\2022\Puzzle01.txt)");
-
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2022, 1, 1, answer);
-}
-
-void Puzzle01_B_2022()
-{
-	Puzzle01_B(R"(z:\AoCInput\2022\Puzzle01.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2022, 1, 2, answer);
 }
