@@ -2,87 +2,91 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle03_2022_Types
 {
 }
 
 using namespace Puzzle03_2022_Types;
 
-static void Puzzle03_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	map<char, int64_t> priority;
-	ranges::copy(ranges::iota_view(0, 26) | views::transform([](int i) -> pair<char, int64_t> { return { (char)('a' + i), i + 1 }; }), inserter(priority, priority.end()));
-	ranges::copy(ranges::iota_view(0, 26) | views::transform([](int i) -> pair<char, int64_t> { return { (char)('A' + i), i + 27 }; }), inserter(priority, priority.end()));
-
-	int64_t answer = 0;
-	for (const auto &line : ReadEachLine(input))
-	{
-		size_t halfLen = line.size() / 2;
-		string firstCompartment = line.substr(0, halfLen);
-		string secondCompartment = line.substr(halfLen);
-
-		vector<char> commonChars;
-		ranges::sort(firstCompartment);
-		ranges::sort(secondCompartment);
-		ranges::set_intersection(firstCompartment, secondCompartment, back_inserter(commonChars));
-		assert(commonChars.size() > 0);
-
-		answer += priority[commonChars.front()];
-	}
-
-	printf("[2022] Puzzle03_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle03_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<string> lines = ReadAllLines(input);
-
-	map<char, int64_t> priority;
-	ranges::copy(ranges::iota_view(0, 26) | views::transform([](int i) -> pair<char, int64_t> { return { (char)('a' + i), i + 1 }; }), inserter(priority, priority.end()));
-	ranges::copy(ranges::iota_view(0, 26) | views::transform([](int i) -> pair<char, int64_t> { return { (char)('A' + i), i + 27 }; }), inserter(priority, priority.end()));
-
-	int64_t answer = 0;
-	for (size_t i = 0; (i + 2) < lines.size(); i += 3)
-	{
-		vector<char> commonChars[2];
-
-		ranges::sort(lines[i + 0]);
-		ranges::sort(lines[i + 1]);
-		ranges::sort(lines[i + 2]);
-
-		ranges::set_intersection(lines[i + 0], lines[i + 1], back_inserter(commonChars[0]));
-		ranges::set_intersection(commonChars[0], lines[i + 2], back_inserter(commonChars[1]));	
-		assert(commonChars[1].size() > 0);
-
-		answer += priority[commonChars[1].front()];
-	}
-
-	printf("[2022] Puzzle03_B: %" PRId64 "\n", answer);
-}
-
 void Puzzle03_A_2022()
 {
-	Puzzle03_A(R"(z:\AoCInput\2022\Puzzle03.txt)");
+	const size_t alphabetSize = 128;
+	vector<int32_t> priorities(alphabetSize);
+	for (int32_t i = 0; i < 26; i++)
+	{
+		priorities['a' + i] = 1 + i;
+		priorities['A' + i] = 27 + i;
+	}
 
 	int32_t answer = 0;
+
+	array<char, 64> line;
+	while (PuzzleInput::NextLine())
+	{
+		int32_t len = Parse::ReadNonEmptyLine(line.data(), line.size());
+
+		int32_t halfLen = len / 2;
+		array<char, 128> seen = {};
+		for (int32_t i = 0; i < halfLen; i++)
+		{
+			seen[line[i]]++;
+		}
+
+		for (int32_t i = halfLen; i < len; i++)
+		{
+			if (seen[line[i]])
+			{
+				answer += priorities[line[i]];
+				break;
+			}
+		}
+	}
+	
 	PuzzleOutput::Submit(2022, 3, 1, answer);
 }
 
 void Puzzle03_B_2022()
 {
-	Puzzle03_B(R"(z:\AoCInput\2022\Puzzle03.txt)");
+	const uint32_t groupSize = 3;
+
+	const size_t alphabetSize = 128;
+	vector<int32_t> priorities(alphabetSize);
+	for (int32_t i = 0; i < 26; i++)
+	{
+		priorities['a' + i] = 1 + i;
+		priorities['A' + i] = 27 + i;
+	}
 
 	int32_t answer = 0;
+
+	array<char, 64> line;
+	while (PuzzleInput::NextLine())
+	{
+		vector<uint32_t> seen(128);
+
+		uint32_t allElves = 0;
+		for (uint32_t elf = 0; elf < groupSize - 1; elf++)
+		{
+			const uint32_t elfMask = 1 << elf;
+			allElves |= elfMask;
+
+			int32_t len = Parse::ReadNonEmptyLine(line.data(), line.size());
+			for (int32_t i = 0; i < len; i++)
+			{
+				seen[line[i]] |= elfMask;
+			}
+		}
+
+		int32_t len = Parse::ReadNonEmptyLine(line.data(), line.size());
+		for (int32_t i = 0; i < len; i++)
+		{
+			if (seen[line[i]] == allElves)
+			{
+				answer += priorities[line[i]];
+				break;
+			}
+		}
+	}
+
 	PuzzleOutput::Submit(2022, 3, 2, answer);
 }
