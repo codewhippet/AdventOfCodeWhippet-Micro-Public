@@ -2,21 +2,14 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle02_2022_Types
 {
 }
 
 using namespace Puzzle02_2022_Types;
 
-static void Puzzle02_A(const string& filename)
+void Puzzle02_A_2022()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
     // A = rock
     // B = paper
     // C = scissors
@@ -25,72 +18,64 @@ static void Puzzle02_A(const string& filename)
     // Y = paper
     // Z = scissors
 
-    map<string, int64_t> scoring =
+    HashMap<string, int32_t> scoring(64, {});
+
+    // I win
+    scoring["A Y"] = 6 + 2;
+    scoring["B Z"] = 6 + 3;
+    scoring["C X"] = 6 + 1;
+
+    // I lose
+    scoring["A Z"] = 0 + 3;
+    scoring["B X"] = 0 + 1;
+    scoring["C Y"] = 0 + 2;
+
+    // I draw
+    scoring["A X"] = 3 + 1;
+    scoring["B Y"] = 3 + 2;
+    scoring["C Z"] = 3 + 3;
+
+    int32_t score = 0;
+    while (PuzzleInput::NextLine())
     {
-        // I win
-        { "A Y", 6 + 2 },
-        { "B Z", 6 + 3 },
-        { "C X", 6 + 1 },
+        array<char, 8> line;
+        Parse::ReadNonEmptyLine(line.data(), line.size());
 
-        // I lose
-        { "A Z", 0 + 3 },
-        { "B X", 0 + 1 },
-        { "C Y", 0 + 2 },
+        score += scoring.At(line.data());
+    }
 
-        // I draw
-        { "A X", 3 + 1 },
-        { "B Y", 3 + 2 },
-        { "C Z", 3 + 3 },
-    };
-
-    auto score = ReadEachLine(input) | views::transform([&](const string& line) { return scoring.at(line); });
-    int64_t answer = accumulate(score.begin(), score.end(), 0ll);
-
-	printf("[2022] Puzzle02_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle02_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-    map<string, int64_t> scoring =
-    {
-        // I need to lose
-        { "A X", 3 + 0 },
-        { "B X", 1 + 0 },
-        { "C X", 2 + 0 },
-
-        // I need to draw
-        { "A Y", 1 + 3 },
-        { "B Y", 2 + 3 },
-        { "C Y", 3 + 3 },
-
-        // I need to win
-        { "A Z", 2 + 6 },
-        { "B Z", 3 + 6 },
-        { "C Z", 1 + 6 },
-    };
-
-    auto score = ReadEachLine(input) | views::transform([&](const string& line) { return scoring.at(line); });
-    int64_t answer = accumulate(score.begin(), score.end(), 0ll);
-
-	printf("[2022] Puzzle02_B: %" PRId64 "\n", answer);
-}
-
-void Puzzle02_A_2022()
-{
-	Puzzle02_A(R"(z:\AoCInput\2022\Puzzle02.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = score;
 	PuzzleOutput::Submit(2022, 2, 1, answer);
 }
 
 void Puzzle02_B_2022()
 {
-	Puzzle02_B(R"(z:\AoCInput\2022\Puzzle02.txt)");
+    HashMap<string, int32_t> scoring(64, {});
 
-	int32_t answer = 0;
+    // I need to lose
+    scoring["A X"] = 3 + 0;
+    scoring["B X"] = 1 + 0;
+    scoring["C X"] = 2 + 0;
+
+    // I need to draw
+    scoring["A Y"] = 1 + 3;
+    scoring["B Y"] = 2 + 3;
+    scoring["C Y"] = 3 + 3;
+
+    // I need to win
+    scoring["A Z"] = 2 + 6;
+    scoring["B Z"] = 3 + 6;
+    scoring["C Z"] = 1 + 6;
+
+    int32_t score = 0;
+    while (PuzzleInput::NextLine())
+    {
+        array<char, 8> line;
+        Parse::ReadNonEmptyLine(line.data(), line.size());
+
+        score += scoring.At(line.data());
+    }
+
+	int32_t answer = score;
 	PuzzleOutput::Submit(2022, 2, 2, answer);
 }
