@@ -2,63 +2,57 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle06_2022_Types
 {
 }
 
 using namespace Puzzle06_2022_Types;
 
-static int64_t FindMarker(const string &message, int64_t requiredCount)
+static int32_t FindMarker(int32_t requiredCount)
 {
-	return Enumerable::Range(0, (int)message.size())
-		->Select<pair<int64_t, string>>([&](const int &i) -> pair<int64_t, string>
-			{
-				return { i, message.substr(i, requiredCount) };
-			})
-		->Where([&](const pair<int64_t, string> &p)
-			{
-				return MakeEnumerator(p.second)->Distinct()->Count() == requiredCount;
-			})
-		->First().first + requiredCount;
-}
+	const size_t windowWidth = 16;
+	const size_t windowMask = windowWidth - 1;
+	assert(requiredCount < windowWidth);
 
-static void Puzzle06_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<char> seen(windowWidth);
+	memset(seen.data(), PuzzleInput::PeekChar(), seen.size());
 
-	int64_t answer = FindMarker(ReadSingleLine(input), 4);
+	vector<vector<bool>> dp(requiredCount, vector<bool>(windowWidth, false));
+	for (size_t messageIndex = 0; PuzzleInput::PeekChar() != EOF; messageIndex++)
+	{
+		const size_t currentWindowIndex = messageIndex & windowMask;
+		const size_t prevWindowIndex = (currentWindowIndex + windowWidth - 1) & windowMask;;
 
-	printf("[2022] Puzzle06_A: %" PRId64 "\n", answer);
-}
+		seen[currentWindowIndex] = static_cast<char>(PuzzleInput::GetChar());
 
-static void Puzzle06_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+		dp[0][currentWindowIndex] = true;
+		for (int32_t i = 1; i < requiredCount; i++)
+		{
+			bool aDisjoint = dp[i - 1][currentWindowIndex];
+			bool bDisjoint = dp[i - 1][prevWindowIndex];
 
-	int64_t answer = FindMarker(ReadSingleLine(input), 14);
+			const size_t checkHistoryWindowIndex = (currentWindowIndex + windowWidth - i) & windowMask;
+			bool newCharUnequal = (seen[currentWindowIndex] != seen[checkHistoryWindowIndex]);
 
-	printf("[2022] Puzzle06_B: %" PRId64 "\n", answer);
+			dp[i][currentWindowIndex] = (aDisjoint && bDisjoint && newCharUnequal);
+		}
+		if (dp[requiredCount - 1][currentWindowIndex])
+		{
+			return static_cast<int32_t>(messageIndex + 1);
+		}
+	}
+
+	return -1;
 }
 
 void Puzzle06_A_2022()
 {
-	Puzzle06_A(R"(z:\AoCInput\2022\Puzzle06.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = FindMarker(4);
 	PuzzleOutput::Submit(2022, 6, 1, answer);
 }
 
 void Puzzle06_B_2022()
 {
-	Puzzle06_B(R"(z:\AoCInput\2022\Puzzle06.txt)");
-
-	int32_t answer = 0;
+	int32_t answer = FindMarker(14);
 	PuzzleOutput::Submit(2022, 6, 2, answer);
 }
