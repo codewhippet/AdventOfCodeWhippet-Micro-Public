@@ -1,35 +1,39 @@
 #include "stdafx.h"
-#include <generator>
 
 using namespace std;
-
-static string_view dummy =
-R"()";
 
 namespace Puzzle07_2022_Types
 {
 	struct Directory
 	{
-		string Name;
-		int64_t LocalSize = 0;
-		shared_ptr<Directory> Parent;
-		vector<shared_ptr<Directory>> Children;
-		int64_t TotalSize = 0;
+		int32_t LocalSize = 0;
+		uint32_t Parent;
+		vector<uint32_t> Children;
+		int32_t TotalSize = 0;
+	};
+
+	struct GetDirectory
+	{
+		vector<Directory>& dirs;
+		const Directory& operator()(uint32_t index) const
+		{
+			return dirs[index];
+		}
 	};
 
 	template <typename CLASS, auto MEMBER>
 	struct GetMember
 	{
-		auto operator()(const shared_ptr<CLASS> &ptr) const
+		auto operator()(const CLASS &ptr) const
 		{
-			return (ptr.get())->*MEMBER;
+			return ptr.*MEMBER;
 		}
 	};
 
 	struct LessEqual
 	{
-		int64_t Comparand;
-		bool operator()(int64_t v) const
+		int32_t Comparand;
+		bool operator()(int32_t v) const
 		{
 			return v <= Comparand;
 		}
@@ -37,136 +41,199 @@ namespace Puzzle07_2022_Types
 
 	struct GreaterEqual
 	{
-		int64_t Comparand;
-		bool operator()(int64_t v) const
+		int32_t Comparand;
+		bool operator()(int32_t v) const
 		{
 			return v >= Comparand;
 		}
 	};
+
+	struct DirectoryIterator
+	{
+	public:
+		using value_type = uint32_t;
+		using difference_type = ptrdiff_t;
+
+		const vector<Directory>* Dirs = nullptr;
+		uint32_t Current = numeric_limits<uint32_t>::max();
+		vector<pair<uint32_t, int32_t>> Stack;
+
+		DirectoryIterator() = default;
+		explicit DirectoryIterator(const vector<Directory>* dirs)
+			: Dirs(dirs)
+			, Current(0)
+		{
+			const size_t expectedDirDepth = 16;
+			Stack.reserve(expectedDirDepth);
+			Stack.push_back({ Current, -1 });
+			Next();
+		}
+
+		const value_type& operator*() const
+		{
+			return Current;
+		}
+
+		const value_type* operator->() const
+		{
+			return &Current;
+		}
+
+		DirectoryIterator& operator++()
+		{
+			Next();
+			return *this;
+		}
+
+		DirectoryIterator operator++(int)
+		{
+			DirectoryIterator prev(*this);
+			Next();
+			return prev;
+		}
+
+		bool operator==(const DirectoryIterator& other) const
+		{
+			return Current == other.Current;
+		}
+
+	private:
+		void Next()
+		{
+			assert(Stack.empty() == false);
+			while (Stack.size() > 0)
+			{
+				pair<uint32_t, int32_t>& topOfStack = Stack.back();
+				if (topOfStack.second == -1)
+				{
+					Current = topOfStack.first;
+					topOfStack.second = 0;
+					return;
+				}
+
+				const Directory& dir = (*Dirs)[topOfStack.first];
+				if (topOfStack.second < dir.Children.size())
+				{
+					uint32_t currentChild = topOfStack.second++;
+					Stack.push_back({ dir.Children[currentChild], -1 });
+				}
+				else
+				{
+					Stack.pop_back();
+				}
+			}
+
+			Current = numeric_limits<uint32_t>::max();
+		}
+	};
+
+	static_assert(forward_iterator<DirectoryIterator>);
 }
 
 using namespace Puzzle07_2022_Types;
 
-static shared_ptr<Directory> ParseDirectoryStructure(istream &input)
+static vector<Directory> ParseDirectoryStructure()
 {
-	shared_ptr<Directory> root;
+	const size_t expectedNumDirectories = 200;
+	vector<Directory> directories;
+	directories.reserve(expectedNumDirectories);
 
-	const regex cdPattern{ R"(\$ cd (.+))" };
-	const regex filePattern{ R"((\d+) .+)" };
+	uint32_t currentDirectory = numeric_limits<uint32_t>::max();
 
-	shared_ptr<Directory> currentDirectory;
-	for (const string &line : ReadEachLine(input))
+	array<char, 32> line;
+	while (PuzzleInput::NextLine())
 	{
-		smatch m;
-		if (regex_match(line, m, cdPattern))
+		Parse::ReadNonEmptyLine(line.data(), line.size());
+		if ((line[0] == '$') && (line[2] == 'c'))
 		{
-			string dirName = m[1].str();
-			if (dirName == "..")
+			if (line[5] == '.')
 			{
-				currentDirectory = currentDirectory->Parent;
+				currentDirectory = directories[currentDirectory].Parent;
 			}
 			else
 			{
-				shared_ptr<Directory> dir{ new Directory() };
-				dir->Name = dirName;
-				dir->Parent = currentDirectory;
+				uint32_t dirIndex = static_cast<uint32_t>(directories.size());
+				directories.push_back({});
 
-				if (currentDirectory)
+				Directory& dir = directories.back();
+				dir.Parent = currentDirectory;
+
+				if (currentDirectory != numeric_limits<uint32_t>::max())
 				{
-					currentDirectory->Children.push_back(dir);
+					directories[currentDirectory].Children.push_back(dirIndex);
 				}
 
-				currentDirectory = dir;
-
-				if (!root)
-				{
-					root = currentDirectory;
-				}
+				currentDirectory = dirIndex;
 			}
 		}
-		else if (regex_match(line, m, filePattern))
+		else if (isdigit(line[0]))
 		{
-			int64_t fileSize = atoll(m[1].str().c_str());
-			currentDirectory->LocalSize += fileSize;
+			int32_t fileSize = Parse::GetInt32(line.data());
+			directories[currentDirectory].LocalSize += fileSize;
 		}
 	}
 
-	return root;
+	return directories;
 }
 
-static void PopulateTotalSizes(const shared_ptr<Directory>& dir)
+static void PopulateTotalSizes(vector<Directory>* dirs)
 {
-	for (const auto& child : dir->Children)
+	const size_t expectedDirDepth = 16;
+	vector<pair<uint32_t, int32_t>> stack;
+	stack.reserve(expectedDirDepth);
+	stack.push_back({ 0, 0 });
+
+	while (stack.size() > 0)
 	{
-		PopulateTotalSizes(child);
+		pair<uint32_t, int32_t>& topOfStack = stack.back();
+		Directory& currentDir = (*dirs)[topOfStack.first];
+		if (topOfStack.second == currentDir.Children.size())
+		{
+			currentDir.TotalSize = currentDir.LocalSize;
+			for (uint32_t child : currentDir.Children)
+			{
+				currentDir.TotalSize += (*dirs)[child].TotalSize;
+			}
+			stack.pop_back();
+		}
+		else
+		{
+			uint32_t nextChildIndex = topOfStack.second++;
+			uint32_t nextChild = currentDir.Children[nextChildIndex];
+			stack.push_back({ nextChild, 0 });
+		}
 	}
-
-	dir->TotalSize = dir->LocalSize + ranges::fold_left(dir->Children | views::transform([](const auto& d) { return d->TotalSize; }), 0ll, plus{});
-}
-
-static generator<const shared_ptr<Directory>&> ForAllDirectories(const shared_ptr<Directory>& dir)
-{
-	co_yield dir;
-
-	for (const auto &child : dir->Children)
-	{
-		co_yield ranges::elements_of(ForAllDirectories(child));
-	}
-}
-
-static void Puzzle07_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	shared_ptr<Directory> root = ParseDirectoryStructure(input);
-	PopulateTotalSizes(root);
-
-	int64_t answer = ranges::fold_left(ForAllDirectories(root)
-		| views::transform(GetMember<Directory, &Directory::TotalSize>{})
-		| views::filter(LessEqual{ 100000 }),
-		0ll,
-		plus{});
-
-	printf("[2022] Puzzle07_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle07_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	shared_ptr<Directory> root = ParseDirectoryStructure(input);
-	PopulateTotalSizes(root);
-
-	int64_t freeSpace = 70000000 - root->TotalSize;
-	int64_t neededSpace = 30000000;
-
-	vector<int64_t> dirSizes = ForAllDirectories(root)
-		| views::transform(GetMember<Directory, &Directory::TotalSize>{})
-		| views::filter(GreaterEqual{ neededSpace - freeSpace })
-		| ranges::to<vector>();
-
-	ranges::sort(dirSizes);
-	int64_t answer = dirSizes.front();
-
-	printf("[2022] Puzzle07_B: %" PRId64 "\n", answer);
 }
 
 void Puzzle07_A_2022()
 {
-	Puzzle07_A(R"(z:\AoCInput\2022\Puzzle07.txt)");
+	vector<Directory> dirs = ParseDirectoryStructure();
+	PopulateTotalSizes(&dirs);
 
-	int32_t answer = 0;
+	auto dirsLessThanTarget = ranges::subrange{ DirectoryIterator{ &dirs }, DirectoryIterator{} }
+		| views::transform(GetDirectory{ dirs })
+		| views::transform(GetMember<Directory, &Directory::TotalSize>{})
+		| views::filter(LessEqual{ 100000 });
+
+	int32_t answer = accumulate(dirsLessThanTarget.begin(), dirsLessThanTarget.end(), 0);
+
 	PuzzleOutput::Submit(2022, 7, 1, answer);
 }
 
 void Puzzle07_B_2022()
 {
-	Puzzle07_B(R"(z:\AoCInput\2022\Puzzle07.txt)");
+	vector<Directory> dirs = ParseDirectoryStructure();
+	PopulateTotalSizes(&dirs);
 
-	int32_t answer = 0;
+	const int32_t freeSpace = 70000000 - dirs[0].TotalSize;
+	const int32_t neededSpace = 30000000;
+
+	auto dirsThatFreeUpEnoughSpace = ranges::subrange{ DirectoryIterator{ &dirs }, DirectoryIterator{} }
+		| views::transform(GetDirectory{ dirs })
+		| views::transform(GetMember<Directory, &Directory::TotalSize>{})
+		| views::filter(GreaterEqual{ neededSpace - freeSpace });
+
+	int32_t answer = ranges::min(dirsThatFreeUpEnoughSpace);
+
 	PuzzleOutput::Submit(2022, 7, 2, answer);
 }
