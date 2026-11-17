@@ -2,36 +2,35 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle09_2022_Types
 {
 }
 
 using namespace Puzzle09_2022_Types;
 
-static int64_t SimulateRope(istream &input, size_t elementCount)
+static int32_t SimulateRope(size_t elementCount)
 {
-	vector<Point2> rope{ elementCount };
+	vector<Vec2Short> rope{ elementCount };
 
-	const map<char, Point2> directions =
-	{
-		{ 'U', Point2::Up() },
-		{ 'D', Point2::Down() },
-		{ 'L', Point2::Left() },
-		{ 'R', Point2::Right() },
-	};
+	const size_t alphabetSize = 128;
+	vector<Vec2Short> directions(alphabetSize);
+	directions['U'] = Vec2Short::Up();
+	directions['D'] = Vec2Short::Down();
+	directions['L'] = Vec2Short::Left();
+	directions['R'] = Vec2Short::Right();
 
-	set<Point2> uniquePositions{ {} };
-	for (const auto &line : ScanfEachLine<char, int64_t>(input, "%c %lld"))
+	HashSet<Vec2Short> uniquePositions{ 16 * 1024, Vec2Short{ numeric_limits<int16_t>::max(), numeric_limits<int16_t>::max() } };
+	while (PuzzleInput::NextLine())
 	{
-		for (int64_t count = 0; count < get<1>(line); count++)
+		Vec2Short direction = directions[PuzzleInput::GetChar()];
+		int32_t steps = Parse::GetInt16();
+
+		for (int64_t count = 0; count < steps; count++)
 		{
-			rope[0] += directions.at(get<0>(line));
+			rope[0] += direction;
 			for (size_t i = 1; i < rope.size(); i++)
 			{
-				Point2 delta = rope[i - 1] - rope[i];
+				Vec2Short delta = rope[i - 1] - rope[i];
 
 				// Pure axis movement
 				bool moveU = (delta.Y == -2);
@@ -47,63 +46,39 @@ static int64_t SimulateRope(istream &input, size_t elementCount)
 
 				if (moveR || moveR_UD)
 				{
-					rope[i] += Point2::Right();
+					rope[i] += Vec2Short::Right();
 				}
 				if (moveL || moveL_UD)
 				{
-					rope[i] += Point2::Left();
+					rope[i] += Vec2Short::Left();
 				}
 				if (moveU || moveU_LR)
 				{
-					rope[i] += Point2::Up();
+					rope[i] += Vec2Short::Up();
 				}
 				if (moveD || moveD_LR)
 				{
-					rope[i] += Point2::Down();
+					rope[i] += Vec2Short::Down();
 				}
 			}
 
-			uniquePositions.insert(rope.back());
+			uniquePositions.Insert(rope.back());
 		}
 	}
 
-	return (int64_t) uniquePositions.size();
-}
-
-static void Puzzle09_A(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	int64_t answer = SimulateRope(input, 2);
-
-	printf("[2022] Puzzle09_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle09_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	int64_t answer = SimulateRope(input, 10);;
-
-	printf("[2022] Puzzle09_B: %" PRId64 "\n", answer);
+	return uniquePositions.Size();
 }
 
 void Puzzle09_A_2022()
 {
-	Puzzle09_A(R"(z:\AoCInput\2022\Puzzle09.txt)");
+	int32_t answer = SimulateRope(2);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2022, 9, 1, answer);
 }
 
 void Puzzle09_B_2022()
 {
-	Puzzle09_B(R"(z:\AoCInput\2022\Puzzle09.txt)");
+	int32_t answer = SimulateRope(10);
 
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2022, 9, 2, answer);
 }
