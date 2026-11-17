@@ -2,32 +2,29 @@
 
 using namespace std;
 
-static string_view dummy =
-R"()";
-
 namespace Puzzle10_2022_Types
 {
 }
 
 using namespace Puzzle10_2022_Types;
 
-static vector<int64_t> GetCycleValues(istream& input)
+static vector<int32_t> GetCycleValues()
 {
-	vector<int64_t> cycleValues;
+	const size_t expectedCycleValues = 256;
+	vector<int32_t> cycleValues;
+	cycleValues.reserve(expectedCycleValues);
 
-	int64_t xRegister = 1;
-	for (const auto& line : ReadEachLine(input))
+	int32_t xRegister = 1;
+	while (PuzzleInput::NextLine())
 	{
-		if (line == "noop"sv)
+		if (PuzzleInput::GetChar() == 'n')
 		{
+			Parse::DiscardExpected("oop");
 			cycleValues.push_back(xRegister);
 		}
 		else
 		{
-			int64_t value = 0;
-			int scanned = sscanf(line.c_str(), "addx %lld", &value);
-			assert(scanned == 1);
-			(void)scanned;
+			int32_t value = Parse::GetInt32();
 
 			cycleValues.push_back(xRegister);
 			cycleValues.push_back(xRegister);
@@ -39,15 +36,11 @@ static vector<int64_t> GetCycleValues(istream& input)
 	return cycleValues;
 }
 
-static void Puzzle10_A(const string& filename)
+void Puzzle10_A_2022()
 {
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
+	vector<int32_t> cycleValues = GetCycleValues();
 
-	vector<int64_t> cycleValues = GetCycleValues(input);
-
-	int64_t answer =
+	int32_t answer =
 		cycleValues[20 - 1] * 20 +
 		cycleValues[60 - 1] * 60 +
 		cycleValues[100 - 1] * 100 +
@@ -55,44 +48,26 @@ static void Puzzle10_A(const string& filename)
 		cycleValues[180 - 1] * 180 +
 		cycleValues[220 - 1] * 220;
 
-	printf("[2022] Puzzle10_A: %" PRId64 "\n", answer);
-}
-
-static void Puzzle10_B(const string& filename)
-{
-	(void)filename;
-	ifstream input(filename);
-	//istringstream input(dummy);
-
-	vector<int64_t> cycleValues = GetCycleValues(input);
-
-	string answer;
-	for (size_t i = 0; i < cycleValues.size(); i++)
-	{
-		if ((i % 40) == 0)
-			answer += '\n';
-
-		size_t vOffset = i % 40;
-		int64_t delta = cycleValues[i] - vOffset;
-		bool on = (delta == -1) || (delta == 0) || (delta == 1);
-		answer += on ? '#' : '.';
-	}
-
-	printf("[2022] Puzzle10_B:%s\n", answer.c_str());
-}
-
-void Puzzle10_A_2022()
-{
-	Puzzle10_A(R"(z:\AoCInput\2022\Puzzle10.txt)");
-
-	int32_t answer = 0;
 	PuzzleOutput::Submit(2022, 10, 1, answer);
 }
 
 void Puzzle10_B_2022()
 {
-	Puzzle10_B(R"(z:\AoCInput\2022\Puzzle10.txt)");
+	vector<int32_t> cycleValues = GetCycleValues();
 
-	int32_t answer = 0;
-	PuzzleOutput::Submit(2022, 10, 2, answer);
+	const size_t expectedNumLines = 6;
+	string answer;
+	answer.reserve(cycleValues.size() + expectedNumLines + 1);
+	for (int32_t i = 0; i < static_cast<int32_t>(cycleValues.size()); i++)
+	{
+		int32_t vOffset = i % 40;
+		if (vOffset == 0)
+			answer += '\n';
+
+		int32_t delta = cycleValues[i] - vOffset;
+		bool on = (delta == -1) || (delta == 0) || (delta == 1);
+		answer += on ? '#' : '.';
+	}
+
+	PuzzleOutput::Submit(2022, 10, 2, answer.c_str());
 }
